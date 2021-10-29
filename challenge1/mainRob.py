@@ -101,18 +101,32 @@ class MyRob(CRobLinkAngs):
         elif self.measures.irSensor[left_id] < 1:
             print('Go left')
             self.driveMotors(0.02,0.15)
-        elif self.measures.irSensor[left_id]> 3.0:
+        elif self.measures.irSensor[right_id] < 1.7:
             #if self.measures.irSensor[left_id] - self.prev_left > 0:
             if self.prev_left == 0:
                 self.prev_left = 1
+                self.prev_right = 0
                 print('Rotate slowly right')
-                self.driveMotors(0.15,0.04)
-        elif self.measures.irSensor[right_id]> 3.0:
+                self.driveMotors(0.15,0.1)
+        elif self.measures.irSensor[left_id] < 1.7:
             #if self.measures.irSensor[right_id] - self.prev_right > 0:
             if self.prev_right == 0:
                 self.prev_right = 1
+                self.prev_left = 0
                 print('Rotate slowly left')
-                self.driveMotors(0.04,0.15)
+                self.driveMotors(0.1,0.15)
+        # elif self.measures.irSensor[left_id]> 3.0:
+        #     #if self.measures.irSensor[left_id] - self.prev_left > 0:
+        #     if self.prev_left == 0:
+        #         self.prev_left = 1
+        #         print('Rotate slowly right')
+        #         self.driveMotors(0.15,0.04)
+        # elif self.measures.irSensor[right_id]> 3.0:
+        #     #if self.measures.irSensor[right_id] - self.prev_right > 0:
+        #     if self.prev_right == 0:
+        #         self.prev_right = 1
+        #         print('Rotate slowly left')
+        #         self.driveMotors(0.04,0.15)
         else:
             print('Go')
             self.driveMotors(2,2)
