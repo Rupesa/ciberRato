@@ -1,4 +1,3 @@
-
 import sys
 from croblink import *
 from math import *
@@ -8,6 +7,10 @@ CELLROWS=7
 CELLCOLS=14
 
 movement = 0 # 0 - frente, 1 - cima, 2 - baixo, 3 - tras
+pre_movement = 0 # 0 - inicio, 1 - cima, 2 - baixo
+init_GPS = [0,0]
+current_GPS = [0,0]
+turning = 0
 
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
@@ -25,16 +28,22 @@ class MyRob(CRobLinkAngs):
             print(''.join([str(l) for l in l]))
 
     def run(self):
+        global init_GPS
+        global current_GPS
+        
         if self.status != 0:
             print("Connection refused or error")
             quit()
 
         state = 'stop'
         stopped_state = 'run'
-
+        self.readSensors()
+        init_GPS = [self.measures.x, self.measures.y]
+        current_GPS = init_GPS
+        
         while True:
             self.readSensors()
-
+            
             if self.measures.endLed:
                 print(self.rob_name + " exiting")
                 quit()
@@ -69,97 +78,98 @@ class MyRob(CRobLinkAngs):
 
     def wander(self):
         global movement
+        global turning
+        
         center_id = 0
         left_id = 1
         right_id = 2
         back_id = 3
+        
         print('Compass: ' + str(self.measures.compass))
         print('GPS x y: ' + str(self.measures.x) + ' ' + str(self.measures.y))
         print('Movement: ' + str(movement))
-        if movement == 0:
-            if self.measures.compass <= 2 and self.measures.compass >= -2:
-                if self.measures.irSensor[center_id] > 1.1:
-                   print('Wall incoming')
-                   if self.measures.irSensor[right_id] < 2.5:
-                      print('Rotate right')
-                      movement = 2
-                      self.driveMotors(0.13,0.07)
-                   elif self.measures.irSensor[left_id] < 2.5:
-                      print('Rotate left')
-                      movement = 1
-                      self.driveMotors(0.07,0.13)
-                else:
-                   print('Go')
-                   self.driveMotors(0.1,0.1)
-            elif self.measures.compass < 0:
-                print('Adjust : Rotate slowly left')
-                self.driveMotors(0.0,0.07)
-            elif self.measures.compass > 0:
-                print('Adjust : Rotate slowly right')
-                self.driveMotors(0.07,0.00)
-        elif movement == 2:
-            if self.measures.compass >= -92 and self.measures.compass <= -88:
-                if self.measures.irSensor[center_id] > 1.1:
-                   print('Wall incoming')
-                   if self.measures.irSensor[right_id] < 2.5:
-                      print('Rotate right')
-                      movement = 3
-                      self.driveMotors(0.13,0.07)
-                   elif self.measures.irSensor[left_id]< 2.5:
-                      print('Rotate left')
-                      movement = 0
-                      self.driveMotors(0.07,0.13)
-                else:
-                   print('Go')
-                   self.driveMotors(0.1,0.1)
-            elif self.measures.compass < -90:
-                print('Adjust : Rotate slowly left')
-                self.driveMotors(0.00,0.07)
-            elif self.measures.compass > -90:
-                print('Adjust : Rotate slowly right')
-                self.driveMotors(0.07,0.00)
-        elif movement == 1:
-            if self.measures.compass <= 92 and self.measures.compass >= 88:
-                if self.measures.irSensor[center_id] > 1.1:
-                   print('Wall incoming')
-                   if self.measures.irSensor[right_id]< 2.5:
-                      print('Rotate right')
-                      movement = 0
-                      self.driveMotors(0.13,0.07)
-                   elif self.measures.irSensor[left_id]< 2.5:
-                      print('Rotate left')
-                      movement = 3
-                      self.driveMotors(0.07,0.13)
-                else:
-                   print('Go')
-                   self.driveMotors(0.1,0.1)
-            elif self.measures.compass < 90:
-                print('Adjust : Rotate slowly left')
-                self.driveMotors(0.00,0.08)
-            elif self.measures.compass > 90:
-                print('Adjust : Rotate slowly right')
-                self.driveMotors(0.08,0.00)
-        elif movement == 3:
-            if self.measures.compass >= 178 or self.measures.compass <= -178:
-                if self.measures.irSensor[center_id] > 1.1:
-                   print('Wall incoming')
-                   if self.measures.irSensor[right_id]< 2.5:
-                      print('Rotate right')
-                      movement = 1
-                      self.driveMotors(0.13,0.07)
-                   elif self.measures.irSensor[left_id]< 2.5:
-                      print('Rotate left')
-                      movement = 2
-                      self.driveMotors(0.07,0.13)
-                else:
-                   print('Go')
-                   self.driveMotors(0.1,0.1)
-            elif self.measures.compass < 178 and self.measures.compass > 0:
-                print('Adjust : Rotate slowly left')
-                self.driveMotors(0.00,0.08)
-            elif self.measures.compass < -178 and self.measures.compass < 0:
-                print('Adjust : Rotate slowly right')
-                self.driveMotors(0.08,0.00)
+        print('Turning: ' + str(turning))
+        
+        if turning == 0:
+            if self.measures.irSensor[center_id] > 1.7:
+                print('wall incoming')
+                self.checksides()
+            else:
+                self.moveforward()
+        else:
+            if movement == 1 and (self.measures.compass >= 92 or self.measures.compass <= 88):
+                self.turnLeft()
+            elif movement == 1:
+                turning = 0
+                
+            elif movement == 2 and (self.measures.compass <= -92 or self.measures.compass >= -88):
+                self.turnRight()
+            elif movement == 2:
+                turning = 0
+                
+            elif movement == 0 and (self.measures.compass <= -2 or self.measures.compass >= 2):
+                self.turnRight()
+            elif movement == 0:
+                turning = 0
+                
+            elif movement == 3 and ((self.measures.compass >= -177 and self.measures.compass <= 0) or (self.measures.compass <= 177 and self.measures.compass >= 0)):
+                self.turnRight()
+            else:
+                turning = 0
+    
+
+    def moveforward(self):
+         global current_GPS
+         
+         if abs(int(self.measures.x - current_GPS[0])) < 2 or abs(int(self.measures.y - current_GPS[1])) < 2:
+             self.driveMotors(0.1, 0.1)
+         else:
+             current_GPS = [self.measures.x, self.measures.y]
+         
+    def checksides(self):
+         global movement
+         global turning
+         
+         if self.measures.irSensor[2] <= 0.8:
+             if movement == 0:
+                 movement = 2
+             elif movement == 1:
+                 movement = 0
+             elif movement == 2:
+                 movement = 3
+             else:
+                 movement = 1
+             turning = 1
+             self.turnRight()
+         elif self.measures.irSensor[1] <= 0.8:
+             if movement == 0:
+                 movement = 1
+             elif movement == 1:
+                 movement = 3
+             elif movement == 2:
+                 movement = 0
+             else:
+                 movement = 2
+             turning = 1
+             self.turnLeft()
+         else:
+             if movement == 0:
+                 movement = 3
+             elif movement == 1:
+                 movement = 2
+             elif movement == 2:
+                 movement = 1
+             else:
+                 movement = 0
+             turning = 1
+             self.turnRight()
+    
+    def turnRight(self):
+         self.driveMotors(0.01, -0.01)
+    
+    def turnLeft(self):
+         self.driveMotors(-0.01, 0.01)
+         
 
 class Map():
     def __init__(self, filename):
@@ -209,7 +219,7 @@ for i in range(1, len(sys.argv),2):
         quit()
 
 if __name__ == '__main__':
-    rob=MyRob(rob_name,pos,[0.0,60.0,-60.0,180.0],host)
+    rob=MyRob(rob_name,pos,[0.0,90.0,-90.0,180.0],host)
     if mapc != None:
         rob.setMap(mapc.labMap)
         rob.printMap()
