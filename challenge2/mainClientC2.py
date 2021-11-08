@@ -8,9 +8,10 @@ CELLCOLS=14
 
 movement = 0 # 0 - frente, 1 - cima, 2 - baixo, 3 - tras
 pre_movement = 0 # 0 - inicio, 1 - cima, 2 - baixo
-init_GPS = [0,0]
-current_GPS = [0,0]
-turning = 0
+init_GPS = [0,0] # initial GPS Position
+current_GPS = [0,0] # current GPS position
+turning = 0  # turning flag
+rotation = 0 # diretion of rotation
 
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
@@ -79,6 +80,7 @@ class MyRob(CRobLinkAngs):
     def wander(self):
         global movement
         global turning
+        global rotation
         
         center_id = 0
         left_id = 1
@@ -98,22 +100,34 @@ class MyRob(CRobLinkAngs):
                 self.moveforward()
         else:
             if movement == 1 and (self.measures.compass >= 92 or self.measures.compass <= 88):
-                self.turnLeft()
+                if rotation == 1:
+                    self.turnLeft()
+                else:
+                    self.turnRight()
             elif movement == 1:
                 turning = 0
                 
             elif movement == 2 and (self.measures.compass <= -92 or self.measures.compass >= -88):
-                self.turnRight()
+                if rotation == 1:
+                    self.turnLeft()
+                else:
+                    self.turnRight()
             elif movement == 2:
                 turning = 0
                 
             elif movement == 0 and (self.measures.compass <= -2 or self.measures.compass >= 2):
-                self.turnRight()
+                if rotation == 1:
+                    self.turnLeft()
+                else:
+                    self.turnRight()
             elif movement == 0:
                 turning = 0
                 
             elif movement == 3 and ((self.measures.compass >= -177 and self.measures.compass <= 0) or (self.measures.compass <= 177 and self.measures.compass >= 0)):
-                self.turnRight()
+                if rotation == 1:
+                    self.turnLeft()
+                else:
+                    self.turnRight()
             else:
                 turning = 0
     
@@ -122,13 +136,14 @@ class MyRob(CRobLinkAngs):
          global current_GPS
          
          if abs(int(self.measures.x - current_GPS[0])) < 2 or abs(int(self.measures.y - current_GPS[1])) < 2:
-             self.driveMotors(0.1, 0.1)
+             self.driveMotors(0.15, 0.15)
          else:
              current_GPS = [self.measures.x, self.measures.y]
          
     def checksides(self):
          global movement
          global turning
+         global rotation
          
          if self.measures.irSensor[2] <= 0.8:
              if movement == 0:
@@ -140,6 +155,7 @@ class MyRob(CRobLinkAngs):
              else:
                  movement = 1
              turning = 1
+             rotation = 0
              self.turnRight()
          elif self.measures.irSensor[1] <= 0.8:
              if movement == 0:
@@ -151,6 +167,7 @@ class MyRob(CRobLinkAngs):
              else:
                  movement = 2
              turning = 1
+             rotation = 1
              self.turnLeft()
          else:
              if movement == 0:
@@ -162,13 +179,14 @@ class MyRob(CRobLinkAngs):
              else:
                  movement = 0
              turning = 1
+             rotation = 0
              self.turnRight()
     
     def turnRight(self):
-         self.driveMotors(0.01, -0.01)
+         self.driveMotors(0.015, -0.015)
     
     def turnLeft(self):
-         self.driveMotors(-0.01, 0.01)
+         self.driveMotors(-0.015, 0.015)
          
 
 class Map():
