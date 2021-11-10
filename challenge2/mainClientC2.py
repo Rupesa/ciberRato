@@ -134,11 +134,48 @@ class MyRob(CRobLinkAngs):
 
     def moveforward(self):
          global current_GPS
+         global movement
          
          if abs(int(self.measures.x - current_GPS[0])) < 2 or abs(int(self.measures.y - current_GPS[1])) < 2:
-             self.driveMotors(0.15, 0.15)
+             if movement == 0:
+                if self.measures.compass < -2:
+                    print('Adjust : slowly left')
+                    self.driveMotors(0.13,0.15)
+                elif self.measures.compass > 2:
+                    print('Adjust : slowly right')
+                    self.driveMotors(0.15,0.13)
+                else:
+                    self.driveMotors(0.15, 0.15)
+             if movement == 1:
+                if self.measures.compass < 88:
+                    print('Adjust : slowly left')
+                    self.driveMotors(0.13,0.15)
+                elif self.measures.compass > 92:
+                    print('Adjust : slowly right')
+                    self.driveMotors(0.15,0.13)
+                else:
+                    self.driveMotors(0.15, 0.15)
+             if movement == 2:
+                if self.measures.compass < -92:
+                    print('Adjust : slowly left')
+                    self.driveMotors(0.13,0.15)
+                elif self.measures.compass > -88:
+                    print('Adjust : slowly right')
+                    self.driveMotors(0.15,0.13)
+                else:
+                    self.driveMotors(0.15, 0.15)
+             if movement == 3:
+                if self.measures.compass < 178 and self.measures.compass > 0:
+                    print('Adjust : slowly left')
+                    self.driveMotors(0.13,0.15)
+                elif self.measures.compass > -178 and self.measures.compass < 0:
+                    print('Adjust : slowly right')
+                    self.driveMotors(0.15,0.13)
+                else:
+                    self.driveMotors(0.15, 0.15)
          else:
              current_GPS = [self.measures.x, self.measures.y]
+             
          
     def checksides(self):
          global movement
