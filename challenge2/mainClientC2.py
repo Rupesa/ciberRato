@@ -2,6 +2,7 @@ import sys
 from croblink import *
 from math import *
 import xml.etree.ElementTree as ET
+import numpy as np
 
 CELLROWS=7
 CELLCOLS=14
@@ -12,6 +13,13 @@ init_GPS = [0,0] # initial GPS Position
 current_GPS = [0,0] # current GPS position
 turning = 0  # turning flag
 rotation = 0 # diretion of rotation
+
+w, h = 55, 27
+mapp = [[0 for x in range(h)] for y in range(w)] 
+mapp[27][13] = "I"
+current_location = [27,13]
+aux_counter = 0
+#print(mapp)
 
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
@@ -41,9 +49,11 @@ class MyRob(CRobLinkAngs):
         self.readSensors()
         init_GPS = [self.measures.x, self.measures.y]
         current_GPS = init_GPS
+        # self.setMap()
         
         while True:
             self.readSensors()
+            # self.printMap()
             
             if self.measures.endLed:
                 print(self.rob_name + " exiting")
@@ -75,7 +85,133 @@ class MyRob(CRobLinkAngs):
                 if self.measures.returningLed==True:
                     self.setReturningLed(False)
                 self.wander()
+
+# Auxiliary Functions
+
+    def getOrientation(self):
+        compass_val = self.measures.compass
+        if (compass_val >= -2) and (compass_val <= 2):
+            return 0
+        elif (compass_val <= 92) and (compass_val >= 88):
+            return 1
+        elif (compass_val >= -92) and (compass_val <= -88):
+            return 2
+        elif ((compass_val >= 178) or (compass_val <= -178)):
+            return 3
+        else:
+            return 4
+    
+    def printMapp(self, m):
+        zipped_rows = zip(*mapp)
+        transpose_matrix = [list(row) for row in zipped_rows]
+        for i in range (int(len(transpose_matrix)/2)):
+            aux = transpose_matrix[len(transpose_matrix) - 1 - i]
+            transpose_matrix[len(transpose_matrix) - 1 - i] = transpose_matrix[i]
+            transpose_matrix[i] = aux 
+
+        print('\n'.join([' '.join([str(cell) for cell in row]) for row in transpose_matrix]))
+
+        #  for i in range(len(mapp[0])):
+        #      print("\n")
+        #      for j in range(len(mapp)):
+        #          print(mapp[j][i], end=" ")
             
+
+    def paintMapp(self):
+        global aux_counter
+        center_id = 0
+        left_id = 1
+        right_id = 2
+        back_id = 3
+        sensibility = 1.7
+
+        print("Sonsor da frente: "+str(self.measures.irSensor[center_id]))
+        print("Sonsor da direita: "+str(self.measures.irSensor[right_id]))
+        print("Sonsor da esquerda: "+str(self.measures.irSensor[left_id]))
+        print("Sonsor da trazeira: "+str(self.measures.irSensor[back_id]))
+        
+        aux_counter += 1
+        print(aux_counter)
+
+        orientation = self.getOrientation()
+        print(orientation)
+        
+        if orientation == 0: #direita
+            current_location[0] += 2
+            if self.measures.irSensor[right_id] > sensibility:
+                mapp[current_location[0]][current_location[1]-1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]-1] = " "
+            if self.measures.irSensor[left_id] > sensibility:
+                mapp[current_location[0]][current_location[1]+1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]+1] = " "
+            if self.measures.irSensor[center_id] > sensibility:
+                mapp[current_location[0]+1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]+1][current_location[1]] = " "
+            if self.measures.irSensor[back_id] > sensibility:
+                mapp[current_location[0]-1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]-1][current_location[1]] = " "
+        elif orientation == 1: #cima
+            current_location[1] += 2
+            if self.measures.irSensor[right_id] > sensibility:
+                mapp[current_location[0]+1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]+1][current_location[1]] = " "
+            if self.measures.irSensor[left_id] > sensibility:
+                mapp[current_location[0]-1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]-1][current_location[1]] = " "
+            if self.measures.irSensor[center_id] > sensibility:
+                mapp[current_location[0]][current_location[1]+1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]+1] = " "
+            if self.measures.irSensor[back_id] > sensibility:
+                mapp[current_location[0]][current_location[1]+1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]+1] = " "
+        elif orientation == 2: #baixo
+            current_location[1] -= 2
+            if self.measures.irSensor[right_id] > sensibility:
+                mapp[current_location[0]-1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]-1][current_location[1]] = " "
+            if self.measures.irSensor[left_id] > sensibility:
+                mapp[current_location[0]+1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]+1][current_location[1]] = " "
+            if self.measures.irSensor[center_id] > sensibility:
+                mapp[current_location[0]][current_location[1]-1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]-1] = " "
+            if self.measures.irSensor[back_id] > sensibility:
+                mapp[current_location[0]][current_location[1]+1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]+1] = " "
+        elif orientation == 3: #esquerda
+            current_location[0] -= 2
+            if self.measures.irSensor[right_id] > sensibility:
+                mapp[current_location[0]][current_location[1]+1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]+1] = " "
+            if self.measures.irSensor[left_id] > sensibility:
+                mapp[current_location[0]][current_location[1]-1] = "-"
+            else:
+                mapp[current_location[0]][current_location[1]-1] = " "
+            if self.measures.irSensor[center_id] > sensibility:
+                mapp[current_location[0]-1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]-1][current_location[1]] = " "
+            if self.measures.irSensor[back_id] > sensibility:
+                mapp[current_location[0]+1][current_location[1]] = "|"
+            else:
+                mapp[current_location[0]+1][current_location[1]] = " "
+            
+        mapp[current_location[0]][current_location[1]] = " "
+
+        self.printMapp(mapp)
 
     def wander(self):
         global movement
@@ -87,14 +223,14 @@ class MyRob(CRobLinkAngs):
         right_id = 2
         back_id = 3
         
-        print('Compass: ' + str(self.measures.compass))
-        print('GPS x y: ' + str(self.measures.x) + ' ' + str(self.measures.y))
-        print('Movement: ' + str(movement))
-        print('Turning: ' + str(turning))
+        # print('Compass: ' + str(self.measures.compass))
+        # print('GPS x y: ' + str(self.measures.x) + ' ' + str(self.measures.y))
+        # print('Movement: ' + str(movement))
+        # print('Turning: ' + str(turning))
         
         if turning == 0:
             if self.measures.irSensor[center_id] > 1.7:
-                print('wall incoming')
+                # print('wall incoming')
                 self.checksides()
             else:
                 self.moveforward()
@@ -133,97 +269,101 @@ class MyRob(CRobLinkAngs):
     
 
     def moveforward(self):
-         global current_GPS
-         global movement
-         
-         if abs(int(self.measures.x - current_GPS[0])) < 2 or abs(int(self.measures.y - current_GPS[1])) < 2:
-             if movement == 0:
+        global current_GPS
+        global movement
+        global aux_counter
+        
+        if (abs(int(self.measures.x - current_GPS[0])) < 2) and (abs(int(self.measures.y - current_GPS[1])) < 2):
+            #print("\nCurrent GPS: "+str(current_GPS))
+            if movement == 0:
                 if self.measures.compass < -2:
-                    print('Adjust : slowly left')
+                    # print('Adjust : slowly left')
                     self.driveMotors(0.13,0.15)
                 elif self.measures.compass > 2:
-                    print('Adjust : slowly right')
+                    # print('Adjust : slowly right')
                     self.driveMotors(0.15,0.13)
                 else:
                     self.driveMotors(0.15, 0.15)
-             if movement == 1:
+            if movement == 1:
                 if self.measures.compass < 88:
-                    print('Adjust : slowly left')
+                    # print('Adjust : slowly left')
                     self.driveMotors(0.13,0.15)
                 elif self.measures.compass > 92:
-                    print('Adjust : slowly right')
+                    # print('Adjust : slowly right')
                     self.driveMotors(0.15,0.13)
                 else:
                     self.driveMotors(0.15, 0.15)
-             if movement == 2:
+            if movement == 2:
                 if self.measures.compass < -92:
-                    print('Adjust : slowly left')
+                    # print('Adjust : slowly left')
                     self.driveMotors(0.13,0.15)
                 elif self.measures.compass > -88:
-                    print('Adjust : slowly right')
+                    # print('Adjust : slowly right')
                     self.driveMotors(0.15,0.13)
                 else:
                     self.driveMotors(0.15, 0.15)
-             if movement == 3:
+            if movement == 3:
                 if self.measures.compass < 178 and self.measures.compass > 0:
-                    print('Adjust : slowly left')
+                    # print('Adjust : slowly left')
                     self.driveMotors(0.13,0.15)
                 elif self.measures.compass > -178 and self.measures.compass < 0:
-                    print('Adjust : slowly right')
+                    # print('Adjust : slowly right')
                     self.driveMotors(0.15,0.13)
                 else:
                     self.driveMotors(0.15, 0.15)
-         else:
-             current_GPS = [self.measures.x, self.measures.y]
+        else:
+            current_GPS = [self.measures.x, self.measures.y]
+            self.paintMapp()
+
              
          
     def checksides(self):
-         global movement
-         global turning
-         global rotation
-         
-         if self.measures.irSensor[2] <= 0.8:
-             if movement == 0:
-                 movement = 2
-             elif movement == 1:
-                 movement = 0
-             elif movement == 2:
-                 movement = 3
-             else:
-                 movement = 1
-             turning = 1
-             rotation = 0
-             self.turnRight()
-         elif self.measures.irSensor[1] <= 0.8:
-             if movement == 0:
-                 movement = 1
-             elif movement == 1:
-                 movement = 3
-             elif movement == 2:
-                 movement = 0
-             else:
-                 movement = 2
-             turning = 1
-             rotation = 1
-             self.turnLeft()
-         else:
-             if movement == 0:
-                 movement = 3
-             elif movement == 1:
-                 movement = 2
-             elif movement == 2:
-                 movement = 1
-             else:
-                 movement = 0
-             turning = 1
-             rotation = 0
-             self.turnRight()
+        global movement
+        global turning
+        global rotation
+        
+        if self.measures.irSensor[2] <= 0.8:
+            if movement == 0:
+                movement = 2
+            elif movement == 1:
+                movement = 0
+            elif movement == 2:
+                movement = 3
+            else:
+                movement = 1
+            turning = 1
+            rotation = 0
+            self.turnRight()
+        elif self.measures.irSensor[1] <= 0.8:
+            if movement == 0:
+                movement = 1
+            elif movement == 1:
+                movement = 3
+            elif movement == 2:
+                movement = 0
+            else:
+                movement = 2
+            turning = 1
+            rotation = 1
+            self.turnLeft()
+        else:
+            if movement == 0:
+                movement = 3
+            elif movement == 1:
+                movement = 2
+            elif movement == 2:
+                movement = 1
+            else:
+                movement = 0
+            turning = 1
+            rotation = 0
+            self.turnRight()
     
     def turnRight(self):
-         self.driveMotors(0.015, -0.015)
+        self.driveMotors(0.015, -0.015)
     
     def turnLeft(self):
-         self.driveMotors(-0.015, 0.015)
+        self.driveMotors(-0.015, 0.015)
          
 
 class Map():
