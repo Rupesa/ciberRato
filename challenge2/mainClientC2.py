@@ -8,7 +8,6 @@ CELLROWS=7
 CELLCOLS=14
 
 movement = 0 # 0 - frente, 1 - cima, 2 - baixo, 3 - tras
-pre_movement = 0 # 0 - inicio, 1 - cima, 2 - baixo
 init_GPS = [0,0] # initial GPS Position
 current_GPS = [0,0] # current GPS position
 turning = 0  # turning flag
@@ -47,7 +46,7 @@ class MyRob(CRobLinkAngs):
         state = 'stop'
         stopped_state = 'run'
         self.readSensors()
-        init_GPS = [self.measures.x, self.measures.y]
+        init_GPS = [round(self.measures.x), round(self.measures.y)]
         current_GPS = init_GPS
         # self.setMap()
         
@@ -88,20 +87,22 @@ class MyRob(CRobLinkAngs):
 
 # Auxiliary Functions
 
-    def getOrientation(self):
-        compass_val = self.measures.compass
-        if (compass_val >= -2) and (compass_val <= 2):
-            return 0
-        elif (compass_val <= 92) and (compass_val >= 88):
-            return 1
-        elif (compass_val >= -92) and (compass_val <= -88):
-            return 2
-        elif ((compass_val >= 178) or (compass_val <= -178)):
-            return 3
-        else:
-            return 4
+    #def getOrientation(self):
+    #    compass_val = self.measures.compass
+    #    if (compass_val >= -2) and (compass_val <= 2):
+    #        return 0
+    #   elif (compass_val <= 92) and (compass_val >= 88):
+    #        return 1
+    #    elif (compass_val >= -92) and (compass_val <= -88):
+    #        return 2
+    #    elif ((compass_val >= 178) or (compass_val <= -178)):
+    #        return 3
+    #    else:
+    #        return 4
     
     def printMapp(self, m):
+        global mapp
+        
         zipped_rows = zip(*mapp)
         transpose_matrix = [list(row) for row in zipped_rows]
         for i in range (int(len(transpose_matrix)/2)):
@@ -119,25 +120,29 @@ class MyRob(CRobLinkAngs):
 
     def paintMapp(self):
         global aux_counter
+        global movement
+        global current_location
+        global mapp
+        
         center_id = 0
         left_id = 1
         right_id = 2
         back_id = 3
         sensibility = 1.7
 
-        print("Sonsor da frente: "+str(self.measures.irSensor[center_id]))
-        print("Sonsor da direita: "+str(self.measures.irSensor[right_id]))
-        print("Sonsor da esquerda: "+str(self.measures.irSensor[left_id]))
-        print("Sonsor da trazeira: "+str(self.measures.irSensor[back_id]))
+        print("Sensor da frente: "+str(self.measures.irSensor[center_id]))
+        print("Sensor da direita: "+str(self.measures.irSensor[right_id]))
+        print("Sensor da esquerda: "+str(self.measures.irSensor[left_id]))
+        print("Sensor da trazeira: "+str(self.measures.irSensor[back_id]))
         
         aux_counter += 1
         print(aux_counter)
 
-        orientation = self.getOrientation()
-        print(orientation)
+        #orientation = self.getOrientation()
+        #print(orientation)
         
-        if orientation == 0: #direita
-            current_location[0] += 2
+        if movement == 0: #direita
+            current_location[0] += 1
             if self.measures.irSensor[right_id] > sensibility:
                 mapp[current_location[0]][current_location[1]-1] = "-"
             else:
@@ -154,8 +159,8 @@ class MyRob(CRobLinkAngs):
                 mapp[current_location[0]-1][current_location[1]] = "|"
             else:
                 mapp[current_location[0]-1][current_location[1]] = " "
-        elif orientation == 1: #cima
-            current_location[1] += 2
+        elif movement == 1: #cima
+            current_location[1] += 1
             if self.measures.irSensor[right_id] > sensibility:
                 mapp[current_location[0]+1][current_location[1]] = "|"
             else:
@@ -172,8 +177,8 @@ class MyRob(CRobLinkAngs):
                 mapp[current_location[0]][current_location[1]+1] = "-"
             else:
                 mapp[current_location[0]][current_location[1]+1] = " "
-        elif orientation == 2: #baixo
-            current_location[1] -= 2
+        elif movement == 2: #baixo
+            current_location[1] -= 1
             if self.measures.irSensor[right_id] > sensibility:
                 mapp[current_location[0]-1][current_location[1]] = "|"
             else:
@@ -190,8 +195,8 @@ class MyRob(CRobLinkAngs):
                 mapp[current_location[0]][current_location[1]+1] = "-"
             else:
                 mapp[current_location[0]][current_location[1]+1] = " "
-        elif orientation == 3: #esquerda
-            current_location[0] -= 2
+        elif movement == 3: #esquerda
+            current_location[0] -= 1
             if self.measures.irSensor[right_id] > sensibility:
                 mapp[current_location[0]][current_location[1]+1] = "-"
             else:
@@ -210,7 +215,6 @@ class MyRob(CRobLinkAngs):
                 mapp[current_location[0]+1][current_location[1]] = " "
             
         mapp[current_location[0]][current_location[1]] = " "
-
         self.printMapp(mapp)
 
     def wander(self):
@@ -273,8 +277,8 @@ class MyRob(CRobLinkAngs):
         global movement
         global aux_counter
         
-        if (abs(int(self.measures.x - current_GPS[0])) < 2) and (abs(int(self.measures.y - current_GPS[1])) < 2):
-            #print("\nCurrent GPS: "+str(current_GPS))
+        if (abs(int(self.measures.x - current_GPS[0])) < 1) and (abs(int(self.measures.y - current_GPS[1])) < 1):
+            print("\nCurrent GPS: "+str(current_GPS))
             if movement == 0:
                 if self.measures.compass < -2:
                     # print('Adjust : slowly left')
@@ -312,7 +316,7 @@ class MyRob(CRobLinkAngs):
                 else:
                     self.driveMotors(0.15, 0.15)
         else:
-            current_GPS = [self.measures.x, self.measures.y]
+            current_GPS = [round(self.measures.x), round(self.measures.y)]
             self.paintMapp()
 
              
