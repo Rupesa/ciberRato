@@ -24,9 +24,8 @@ rotation = 0 # diretion of rotation
 w, h = 55, 27
 mapp = [[0 for x in range(h)] for y in range(w)] 
 mapp[27][13] = "I"
-aux_counter = 0
+#aux_counter = 0
 scale= []
-#print(mapp)
 
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
@@ -101,9 +100,11 @@ class MyRob(CRobLinkAngs):
     	global mapp
     	global scale
 
-    	pos_x = int((x-scale[0]))
-    	pos_y = int((y-scale[1])) 
-    	mapp[pos_x][pos_y] = symbol
+    	pos_x = int(x-scale[0])
+    	pos_y = int(y-scale[1])
+    	
+    	if mapp[pos_x][pos_y] == 0 or mapp[pos_x][pos_y] == " ":
+    	    mapp[pos_x][pos_y] = symbol
 
     
     def printMapp(self, m):
@@ -125,7 +126,6 @@ class MyRob(CRobLinkAngs):
             
 
     def paintMapp(self):
-        global aux_counter
         global movement
         global current_GPS
         global mapp
@@ -140,9 +140,6 @@ class MyRob(CRobLinkAngs):
         print("Sensor da direita: "+str(self.measures.irSensor[right_id]))
         print("Sensor da esquerda: "+str(self.measures.irSensor[left_id]))
         print("Sensor da trazeira: "+str(self.measures.irSensor[back_id]))
-        
-        aux_counter += 1
-        print(aux_counter)
         
         if movement == 0: #direita
             if self.measures.irSensor[right_id] > sensibility:
@@ -175,9 +172,9 @@ class MyRob(CRobLinkAngs):
             else:
                 self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, " ")
             if self.measures.irSensor[back_id] > sensibility:
-                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, "-")
+                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]-1, "-")
             else:
-                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, " ")
+                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]-1, " ")
         elif movement == 2: #baixo
             if self.measures.irSensor[right_id] > sensibility:
                 self.translateGPStoMappCoord(current_GPS[0]-1, current_GPS[1], "|")
@@ -196,7 +193,6 @@ class MyRob(CRobLinkAngs):
             else:
                 self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, " ")
         elif movement == 3: #esquerda
-
             if self.measures.irSensor[right_id] > sensibility:
                 self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, "-")
             else:
@@ -214,7 +210,7 @@ class MyRob(CRobLinkAngs):
             else:
                 self.translateGPStoMappCoord(current_GPS[0]+1, current_GPS[1], " ")
             
-        self.translateGPStoMappCoord(current_GPS[0], current_GPS[1], " ")
+        self.translateGPStoMappCoord(current_GPS[0], current_GPS[1], "X")
         self.printMapp(mapp)
 
     def wander(self):
@@ -229,7 +225,7 @@ class MyRob(CRobLinkAngs):
         
         if turning == 0:
             if self.measures.irSensor[center_id] > 1.7:
-                self.paintMapp();
+                #self.paintMapp();
                 self.checksides()
                 
             else:
@@ -276,33 +272,33 @@ class MyRob(CRobLinkAngs):
         if (abs(int(self.measures.x - current_GPS[0])) < 1) and (abs(int(self.measures.y - current_GPS[1])) < 1):
             print("\nCurrent GPS: "+str(current_GPS))
             if movement == 0:
-                if self.measures.compass < -2: # Adjust : slowly left
-                    self.driveMotors(0.125,0.15)
-                elif self.measures.compass > 2: # Adjust : slowly right
-                    self.driveMotors(0.15,0.125)
+                if self.measures.compass < -1: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass > 1: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
             if movement == 1:
-                if self.measures.compass < 88: # Adjust : slowly left
-                    self.driveMotors(0.125,0.15)
-                elif self.measures.compass > 92: # Adjust : slowly right
-                    self.driveMotors(0.15,0.125)
+                if self.measures.compass < 89: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass > 91: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
             if movement == 2:
-                if self.measures.compass < -92: # Adjust : slowly left
-                    self.driveMotors(0.125,0.15)
-                elif self.measures.compass > -88: # Adjust : slowly right
-                    self.driveMotors(0.15,0.125)
+                if self.measures.compass < -91: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass > -89: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
             if movement == 3:
-                if self.measures.compass < 178 and self.measures.compass > 0: # Adjust : slowly left
-                    self.driveMotors(0.125,0.15)
-                elif self.measures.compass > -178 and self.measures.compass < 0: # Adjust : slowly right
-                    self.driveMotors(0.15,0.125)
+                if self.measures.compass <= 178 and self.measures.compass > 0: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass >= -178 and self.measures.compass < 0: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
         else:
             current_GPS = [round(self.measures.x), round(self.measures.y)]
             self.paintMapp()
