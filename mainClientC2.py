@@ -21,6 +21,9 @@ current_GPS = [0,0] # current GPS position
 turning = 0  # turning flag
 rotation = 0 # diretion of rotation
 
+rotation_counter = 0 # counter to rotate faster
+ongoing = 0 # 1 if the mouse is going to a position
+
 w, h = 55, 27
 mapp = [[0 for x in range(h)] for y in range(w)] 
 mapp[27][13] = "I"
@@ -172,9 +175,9 @@ class MyRob(CRobLinkAngs):
             else:
                 self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, " ")
             if self.measures.irSensor[back_id] > sensibility:
-                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, "-")
+                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]-1, "-")
             else:
-                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]+1, " ")
+                self.translateGPStoMappCoord(current_GPS[0], current_GPS[1]-1, " ")
         elif movement == 2: #baixo
             if self.measures.irSensor[right_id] > sensibility:
                 self.translateGPStoMappCoord(current_GPS[0]-1, current_GPS[1], "|")
@@ -217,6 +220,8 @@ class MyRob(CRobLinkAngs):
         global movement
         global turning
         global rotation
+        global rotation_counter
+        global ongoing
         
         center_id = 0
         left_id = 1
@@ -225,7 +230,7 @@ class MyRob(CRobLinkAngs):
         
         if turning == 0:
             if self.measures.irSensor[center_id] > 1.7:
-                self.paintMapp();
+                #self.paintMapp();
                 self.checksides()
                 
             else:
@@ -237,6 +242,7 @@ class MyRob(CRobLinkAngs):
                 else:
                     self.turnRight()
             elif movement == 1:
+                rotation_counter = 0
                 turning = 0
                 
             elif movement == 2 and (self.measures.compass <= -92 or self.measures.compass >= -88):
@@ -245,6 +251,7 @@ class MyRob(CRobLinkAngs):
                 else:
                     self.turnRight()
             elif movement == 2:
+                rotation_counter = 0
                 turning = 0
                 
             elif movement == 0 and (self.measures.compass <= -2 or self.measures.compass >= 2):
@@ -253,6 +260,7 @@ class MyRob(CRobLinkAngs):
                 else:
                     self.turnRight()
             elif movement == 0:
+                rotation_counter = 0
                 turning = 0
                 
             elif movement == 3 and ((self.measures.compass >= -177 and self.measures.compass <= 0) or (self.measures.compass <= 177 and self.measures.compass >= 0)):
@@ -261,6 +269,7 @@ class MyRob(CRobLinkAngs):
                 else:
                     self.turnRight()
             else:
+                rotation_counter = 0
                 turning = 0
     
 
@@ -272,33 +281,33 @@ class MyRob(CRobLinkAngs):
         if (abs(int(self.measures.x - current_GPS[0])) < 1) and (abs(int(self.measures.y - current_GPS[1])) < 1):
             print("\nCurrent GPS: "+str(current_GPS))
             if movement == 0:
-                if self.measures.compass < -2: # Adjust : slowly left
-                    self.driveMotors(0.125,0.14)
-                elif self.measures.compass > 2: # Adjust : slowly right
-                    self.driveMotors(0.14,0.125)
+                if self.measures.compass < -1: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass > 1: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
             if movement == 1:
-                if self.measures.compass < 88: # Adjust : slowly left
-                    self.driveMotors(0.125,0.14)
-                elif self.measures.compass > 92: # Adjust : slowly right
-                    self.driveMotors(0.14,0.125)
+                if self.measures.compass < 89: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass > 91: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
             if movement == 2:
-                if self.measures.compass < -92: # Adjust : slowly left
-                    self.driveMotors(0.125,0.14)
-                elif self.measures.compass > -88: # Adjust : slowly right
-                    self.driveMotors(0.14,0.125)
+                if self.measures.compass < -91: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass > -89: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
             if movement == 3:
-                if self.measures.compass < 178 and self.measures.compass > 0: # Adjust : slowly left
-                    self.driveMotors(0.125,0.14)
-                elif self.measures.compass > -178 and self.measures.compass < 0: # Adjust : slowly right
-                    self.driveMotors(0.14,0.125)
+                if self.measures.compass <= 178 and self.measures.compass > 0: # Adjust : slowly left
+                    self.driveMotors(0.11,0.14)
+                elif self.measures.compass >= -178 and self.measures.compass < 0: # Adjust : slowly right
+                    self.driveMotors(0.14,0.11)
                 else:
-                    self.driveMotors(0.15, 0.15)
+                    self.driveMotors(0.13, 0.13)
         else:
             current_GPS = [round(self.measures.x), round(self.measures.y)]
             self.paintMapp()
@@ -347,10 +356,22 @@ class MyRob(CRobLinkAngs):
             self.turnRight()
     
     def turnRight(self):
-        self.driveMotors(0.015, -0.015)
+        global rotation_counter
+        rotation_counter += 1
+        if (rotation_counter < 6):
+            self.driveMotors(0.13, -0.13)
+        else:
+            self.driveMotors(0.015, -0.015)
+        # print(rotation_counter)
+        # print(self.measures.compass)
     
     def turnLeft(self):
-        self.driveMotors(-0.015, 0.015)
+        global rotation_counter
+        rotation_counter += 1
+        if (rotation_counter < 6):
+            self.driveMotors(-0.13, 0.13)
+        else:
+            self.driveMotors(-0.015, 0.015)
          
 
 class Map():
