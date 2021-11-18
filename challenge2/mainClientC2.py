@@ -24,6 +24,9 @@ turning = 0  # turning flag
 rotation_counter = 0 # counter to rotate faster
 ongoing = False # if the mouse is going to a position
 decimal_init_GPS = [0,0]
+path_list = []
+goingToDest = False
+dontGoNow = False
 
 w, h = 55, 27
 mapp = [[0 for x in range(h)] for y in range(w)] 
@@ -107,11 +110,15 @@ class MyRob(CRobLinkAngs):
         global rotation_counter
         global ongoing
         global current_GPS
+        global path_list
+        global goingToDest
+        global dontGoNow
         
         center_id = 0
         left_id = 1
         right_id = 2
         back_id = 3
+
 
         self.translateGPStoMappCoordAndPaint((self.measures.x), (self.measures.y), "X")
 
@@ -124,67 +131,96 @@ class MyRob(CRobLinkAngs):
                 self.paintMapp()
                 ongoing = False
         else:
-            if turning == 0:
-                current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
-                # If there is a space near the mouse, go for it!
-                if mapp[current_x][current_y+1] == " ":
-                    if movement != 1:
-                        turning = 1
-                        movement = 1
-                elif mapp[current_x][current_y-1] == " ":
-                    if movement != 2:
-                        turning = 1
-                        movement = 2
-                elif mapp[current_x+1][current_y] == " ":
-                    if movement != 0:
-                        turning = 1
-                        movement = 0
-                elif mapp[current_x-1][current_y] == " ":
-                    if movement != 3:
-                        turning = 1
-                        movement = 3
-                        
-                # Just until A* is ready
-                # Probability of turning when every near cell is X
-                # This helps the mouse to get out of "cages"
-                elif round(random.random()) == 1:
-                    print("Considered to turn")
-                    if movement == 0:
-                        if mapp[current_x][current_y+1] == "X":
-                            turning = 1
-                            movement = 1
-                        elif mapp[current_x][current_y-1] == "X":
-                            turning = 1
-                            movement = 2
-                    elif movement == 1:
-                        if mapp[current_x+1][current_y] == "X":
-                            turning = 1
-                            movement = 0
-                        elif mapp[current_x-1][current_y] == "X":
-                            turning = 1
-                            movement = 3
-                    elif movement == 2:
-                        if mapp[current_x+1][current_y] == "X":
-                            turning = 1
-                            movement = 0
-                        elif mapp[current_x-1][current_y] == "X":
-                            turning = 1
-                            movement = 3
-                    elif movement == 3:
-                        if mapp[current_x][current_y+1] == "X":
-                            turning = 1
-                            movement = 1
-                        elif mapp[current_x][current_y-1] == "X":
-                            turning = 1
-                            movement = 2
 
-                if turning == 0:
+            if turning == 0:
+                
+                print(path_list)
+                if path_list:
+                    print("heyyyyy")
+                    if len(path_list) == 1:
+                        path_list.pop()
+                        goingToDest = False
+                    else:
+                        move = path_list[0]
+
+                        if movement != move:
+                            movement = move
+                            turning = 1
+                        else:
+                            path_list.pop(0)
+                            path_list.pop(0)
+
+                if not goingToDest:
+                    current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
+                    # If there is a space near the mouse, go for it!
+                    if mapp[current_x][current_y+1] == " ":
+                        if movement != 1:
+                            turning = 1
+                            movement = 1
+                    elif mapp[current_x][current_y-1] == " ":
+                        if movement != 2:
+                            turning = 1
+                            movement = 2
+                    elif mapp[current_x+1][current_y] == " ":
+                        if movement != 0:
+                            turning = 1
+                            movement = 0
+                    elif mapp[current_x-1][current_y] == " ":
+                        if movement != 3:
+                            turning = 1
+                            movement = 3
+                            
+                    else: 
+                        print(current_x)
+                        print(current_y)
+                        if (current_x == 25) and (current_y == 15):
+                            print("Aquiiiiii")
+                            goingToDest = self.getPathToSpace() # Must return True to go!
+                            dontGoNow = True
+
+                        # Just until A* is ready
+                        # Probability of turning when every near cell is X
+                        # This helps the mouse to get out of "cages"
+                        elif round(random.random()) == 1:
+                            print("Considered to turn")
+                            if movement == 0:
+                                if mapp[current_x][current_y+1] == "X":
+                                    turning = 1
+                                    movement = 1
+                                elif mapp[current_x][current_y-1] == "X":
+                                    turning = 1
+                                    movement = 2
+                            elif movement == 1:
+                                if mapp[current_x+1][current_y] == "X":
+                                    turning = 1
+                                    movement = 0
+                                elif mapp[current_x-1][current_y] == "X":
+                                    turning = 1
+                                    movement = 3
+                            elif movement == 2:
+                                if mapp[current_x+1][current_y] == "X":
+                                    turning = 1
+                                    movement = 0
+                                elif mapp[current_x-1][current_y] == "X":
+                                    turning = 1
+                                    movement = 3
+                            elif movement == 3:
+                                if mapp[current_x][current_y+1] == "X":
+                                    turning = 1
+                                    movement = 1
+                                elif mapp[current_x][current_y-1] == "X":
+                                    turning = 1
+                                    movement = 2
+
+                if turning == 0 and not dontGoNow:
                     if self.measures.irSensor[center_id] > 1.1:
                         #self.paintMapp();
                         self.checksides()
                         
                     else:
                         self.moveforward()
+                
+                dontGoNow = False
             else:
                 # No need to use the rotation direction var
                 if movement == 1 and (self.measures.compass >= 92 or self.measures.compass <= 88):
@@ -359,6 +395,13 @@ class MyRob(CRobLinkAngs):
         elif movement == 1 or movement == 2:
             return abs((y%1) - decimal_init_GPS[1]) < max_gap
 
+
+    def getPathToSpace(self):
+        print("Entrouuuuuuuuu\nu\nu\nu")
+        global path_list
+
+        path_list = [0,0,0,0,2,2,0]
+        return True
     
     
     def printMapp(self, m):
@@ -373,10 +416,12 @@ class MyRob(CRobLinkAngs):
 
         print('\n'.join([' '.join([str(cell) for cell in row]) for row in transpose_matrix]))
 
-        #  for i in range(len(mapp[0])):
-        #      print("\n")
-        #      for j in range(len(mapp)):
-        #          print(mapp[j][i], end=" ")
+        # a_file = open("test.txt", "w")
+        # for row in transpose_matrix:
+        #     for elem in row:
+        #         if elem == 0: elem = " " 
+        #         a_file.write(''.join(str(elem)))
+        #     a_file.write('\n')
             
 
     def paintMapp(self):
