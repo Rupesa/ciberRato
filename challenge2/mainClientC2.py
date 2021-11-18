@@ -23,6 +23,7 @@ turning = 0  # turning flag
 
 rotation_counter = 0 # counter to rotate faster
 ongoing = False # if the mouse is going to a position
+decimal_init_GPS = [0,0]
 
 w, h = 55, 27
 mapp = [[0 for x in range(h)] for y in range(w)] 
@@ -49,6 +50,7 @@ class MyRob(CRobLinkAngs):
         global init_GPS
         global current_GPS
         global scale
+        global decimal_init_GPS
         
         if self.status != 0:
             print("Connection refused or error")
@@ -59,11 +61,9 @@ class MyRob(CRobLinkAngs):
         self.readSensors()
         init_GPS = [(self.measures.x), (self.measures.y)]
         current_GPS = init_GPS
+        decimal_init_GPS = [init_GPS[0]%1,init_GPS[1]%1]
         
         scale = [init_GPS[0] - 27, init_GPS[1] - 13]
-
-        print(init_GPS)
-        print(scale)
         
         
         while True:
@@ -112,6 +112,8 @@ class MyRob(CRobLinkAngs):
         left_id = 1
         right_id = 2
         back_id = 3
+
+        self.translateGPStoMappCoordAndPaint((self.measures.x), (self.measures.y), "X")
 
         if ongoing:
             moved = self.moveforward()
@@ -225,18 +227,18 @@ class MyRob(CRobLinkAngs):
     def moveforward(self):
         global current_GPS
         global movement
-        global aux_counter
         global ongoing
 
-        min_distance = 1
+        straight_speed = 0.15
+        min_distance = 2 - 0.2
         ongoing = True
         
         x_int = (abs(self.measures.x - current_GPS[0]))
         y_int = (abs(self.measures.y - current_GPS[1]))
 
-        if (x_int < min_distance) and (y_int < min_distance):
+        if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(self.measures.x, self.measures.y):
             #print("\nCurrent GPS: "+str(current_GPS))
-            if (min_distance - x_int < 0.25) or (min_distance - y_int < 0.25):
+            if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15):
                 self.driveMotors(0.007, 0.007)
             else:
                 if movement == 0:
@@ -245,28 +247,28 @@ class MyRob(CRobLinkAngs):
                     elif self.measures.compass > 1: # Adjust : slowly right
                         self.driveMotors(0.14,0.11)
                     else:
-                        self.driveMotors(0.13, 0.13)
+                        self.driveMotors(straight_speed, straight_speed)
                 if movement == 1:
                     if self.measures.compass < 89: # Adjust : slowly left
                         self.driveMotors(0.11,0.14)
                     elif self.measures.compass > 91: # Adjust : slowly right
                         self.driveMotors(0.14,0.11)
                     else:
-                        self.driveMotors(0.13, 0.13)
+                        self.driveMotors(straight_speed, straight_speed)
                 if movement == 2:
                     if self.measures.compass < -91: # Adjust : slowly left
                         self.driveMotors(0.11,0.14)
                     elif self.measures.compass > -89: # Adjust : slowly right
                         self.driveMotors(0.14,0.11)
                     else:
-                        self.driveMotors(0.13, 0.13)
+                        self.driveMotors(straight_speed, straight_speed)
                 if movement == 3:
                     if self.measures.compass <= 178 and self.measures.compass > 0: # Adjust : slowly left
                         self.driveMotors(0.11,0.14)
                     elif self.measures.compass >= -178 and self.measures.compass < 0: # Adjust : slowly right
                         self.driveMotors(0.14,0.11)
                     else:
-                        self.driveMotors(0.13, 0.13)
+                        self.driveMotors(straight_speed, straight_speed)
             
             return True
         else:
@@ -342,6 +344,21 @@ class MyRob(CRobLinkAngs):
         
         if mapp[pos_x][pos_y] == 0 or mapp[pos_x][pos_y] == " ":
             mapp[pos_x][pos_y] = symbol
+
+    def verifyDecimals(self, x, y):
+        global movement
+        global decimal_init_GPS
+
+        max_gap = 0.05
+
+        # print("Initial decimal x: "+str(decimal_init_GPS[0]))
+        # print("Current decimal x: "+ str(x%1))
+        
+        if movement == 0 or movement == 3:
+            return abs((x%1) - decimal_init_GPS[0]) < max_gap
+        elif movement == 1 or movement == 2:
+            return abs((y%1) - decimal_init_GPS[1]) < max_gap
+
     
     
     def printMapp(self, m):
