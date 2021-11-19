@@ -12,6 +12,7 @@ from math import *
 import xml.etree.ElementTree as ET
 import numpy as np
 import random
+from node import Node, astar
 
 CELLROWS=7
 CELLCOLS=14
@@ -68,6 +69,7 @@ class MyRob(CRobLinkAngs):
         
         scale = [init_GPS[0] - 27, init_GPS[1] - 13]
         
+        self.paintMapp()
         
         while True:
             self.readSensors()
@@ -173,15 +175,15 @@ class MyRob(CRobLinkAngs):
                     else: 
                         print(current_x)
                         print(current_y)
-                        if (current_x == 25) and (current_y == 15):
-                            print("Aquiiiiii")
-                            goingToDest = self.getPathToSpace() # Must return True to go!
-                            dontGoNow = True
+                        # if (current_x == 25) and (current_y == 15):
+                        print("Aquiiiiii")
+                        goingToDest = self.getPathToSpace(current_x, current_y) # Must return True to go!
+                        dontGoNow = True
 
                         # Just until A* is ready
                         # Probability of turning when every near cell is X
                         # This helps the mouse to get out of "cages"
-                        elif round(random.random()) == 1:
+                        if round(random.random()) == 1:
                             print("Considered to turn")
                             if movement == 0:
                                 if mapp[current_x][current_y+1] == "X":
@@ -396,18 +398,77 @@ class MyRob(CRobLinkAngs):
             return abs((y%1) - decimal_init_GPS[1]) < max_gap
 
 
-    def getPathToSpace(self):
+    def getPathToSpace(self, current_x, current_y):
         print("Entrouuuuuuuuu\nu\nu\nu")
         global path_list
 
-        path_list = [0,0,0,0,2,2,0]
+        goal_x, goal_y = self.getNearestSpace(current_x, current_y)
+        print("Goal: "+str(goal_x)+str(goal_y))
+        zeros_map = self.get_zeros_map()
+        self.printMapp(zeros_map)
+        
+        path = astar(zeros_map, (current_x, current_y), (goal_x, goal_y))
+        print(path)
+
+        path_list = self.path_to_movements(path)
+
+        # path_list = [0,0,0,0,2,2,0]
         return True
+
+    
+    def getNearestSpace(self, current_x, current_y):
+        global mapp
+        global w
+        global h
+        minDist = 900
+        closestBreach = []
+
+        for i in range(w):
+            for j in range(h):
+                if mapp[i][j] == ' ':
+                    dist = (((abs(i - current_x)**2) + (abs(j - current_y)**2))**0.5)
+                    if dist < minDist:
+                        closestBreach  = [i, j]
+                        minDist = dist
+
+        return closestBreach
+        
+
+    def get_zeros_map(self):
+        global mapp
+        global w
+        global h
+
+        return_map = [[1 for x in range(h)] for y in range(w)] 
+
+        for i in range(w):
+            for j in range(h):
+                if mapp[i][j] == ' ' or mapp[i][j] == 'X'or mapp[i][j] == 'I':
+                    return_map[i][j] = 0
+
+        return return_map
+
+
+    def path_to_movements(self, list):
+        return_list = []
+        for i in range(1,len(list)):
+            aux_t = [list[i][0]-list[i-1][0], list[i][1]-list[i-1][1]]
+
+            if aux_t[0] == -1:
+                return_list.append(3)
+            elif aux_t[0] == 1:
+                return_list.append(0)
+            elif aux_t[1] == 1:
+                return_list.append(1)
+            elif aux_t[1] == -1:
+                return_list.append(2)
+
+        return return_list
     
     
     def printMapp(self, m):
-        global mapp
         
-        zipped_rows = zip(*mapp)
+        zipped_rows = zip(*m)
         transpose_matrix = [list(row) for row in zipped_rows]
         for i in range (int(len(transpose_matrix)/2)):
             aux = transpose_matrix[len(transpose_matrix) - 1 - i]
