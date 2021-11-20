@@ -142,6 +142,8 @@ class MyRob(CRobLinkAngs):
                     if done:
                         found = 1
                         print('Done!')
+                        self.finish()
+                        sys.exit()
                 ongoing = False
         else:
 
@@ -185,7 +187,6 @@ class MyRob(CRobLinkAngs):
                             goingToDest = self.getPathToSpace(current_x, current_y) # Must return 1 to go!
 
                             if goingToDest == 2:
-                                #self.writeMapToFile()
                                 sys.exit()
 
                             dontGoNow = True
@@ -601,22 +602,39 @@ class MyRob(CRobLinkAngs):
         new_steps = st.search()[1:]
         if new_steps == []:
             return 0
-        steps.append(new_steps)
+        for n_s in new_steps:
+            steps.append(n_s)
         
         nextPosition = SearchProblem(ciberrato, Point2, init)
         st = SearchTree(nextPosition)
         new_steps = st.search()[1:]
         if new_steps == []:
             return 0
-        steps.append(new_steps)
+        for n_s in new_steps:
+            steps.append(n_s)
         
         print(str(steps))
         
-        a_file = open("mapping.out", "w")
-        for s in steps:
-            a_file.write(str(s))
+        self.writeBestPathToFile(steps)
         
         return 1
+        
+    def writeBestPathToFile(self, steps):
+        global Point1
+        global Point2
+        
+        i = 0
+        a_file = open("mapping.out", "w")
+        for s in steps:
+            if (i % 2) == 0:
+                if s == Point1:
+                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #1 \n")
+                elif s == Point2:
+                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #2 \n")
+                else:
+                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + "\n")
+            i += 1
+
 
 class Map():
     def __init__(self, filename):
