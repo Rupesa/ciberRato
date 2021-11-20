@@ -141,7 +141,7 @@ class MyRob(CRobLinkAngs):
                     done = self.calcBestPath_init_P1_P2()
                     if done:
                         found = 1
-                    print('Done!')
+                        print('Done!')
                 ongoing = False
         else:
 
