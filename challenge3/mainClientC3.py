@@ -607,7 +607,7 @@ class MyRob(CRobLinkAngs):
         global Point2
         
         i = 0
-        a_file = open("mapping.out", "w")
+        a_file = open("pathC3.out", "w")
         for s in steps:
             if (i % 2) == 0:
                 if s == Point1:
