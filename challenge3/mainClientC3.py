@@ -454,19 +454,7 @@ class MyRob(CRobLinkAngs):
                 return_list.append(2)
 
         return return_list
-    
-
-    def printMapp(self, m):
         
-        zipped_rows = zip(*m)
-        transpose_matrix = [list(row) for row in zipped_rows]
-        for i in range (int(len(transpose_matrix)/2)):
-            aux = transpose_matrix[len(transpose_matrix) - 1 - i]
-            transpose_matrix[len(transpose_matrix) - 1 - i] = transpose_matrix[i]
-            transpose_matrix[i] = aux 
-
-        print('\n'.join([' '.join([str(cell) for cell in row]) for row in transpose_matrix]))
-
        
     def writeMapToFile(self):
         global mapp
@@ -567,7 +555,6 @@ class MyRob(CRobLinkAngs):
                 self.translateGPStoMappCoordAndPaint(current_GPS[0]+1, current_GPS[1], " ")
             
         self.translateGPStoMappCoordAndPaint(current_GPS[0], current_GPS[1], "X")
-        self.printMapp(mapp)
         
     def checkGround(self):
         global Point1
@@ -577,11 +564,9 @@ class MyRob(CRobLinkAngs):
         
         if self.measures.ground == 1 and Point1 == []:
              Point1 = [current_x, current_y]
-             print(Point1)
          
         if self.measures.ground == 2 and Point2 == []:
              Point2 = [current_x, current_y]
-             print(Point2)
               
     def calcBestPath_init_P1_P2(self):
         global Point1
@@ -612,8 +597,6 @@ class MyRob(CRobLinkAngs):
             return 0
         for n_s in new_steps:
             steps.append(n_s)
-        
-        print(str(steps))
         
         self.writeBestPathToFile(steps)
         
