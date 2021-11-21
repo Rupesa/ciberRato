@@ -131,7 +131,8 @@ class MyRob(CRobLinkAngs):
         back_id = 3
 
         self.translateGPStoMappCoordAndPaint((self.measures.x), (self.measures.y), "X")
-
+        current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
+        
         if ongoing:
             moved = self.moveforward()
             if not moved:
@@ -140,7 +141,7 @@ class MyRob(CRobLinkAngs):
                 self.checkGround()
                 if Point1 != [] and Point2 != [] and not found:
                     done = self.calcBestPath_init_P1_P2()
-                    if done:
+                    if done and self.getNearestSpace(current_x, current_y) == []:
                         found = 1
                         print('Done!')
                         self.finish()
@@ -164,7 +165,6 @@ class MyRob(CRobLinkAngs):
                             path_list.pop(0)
 
                 if goingToDest == 0:
-                    current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
                     # If there is a space near the mouse, go for it!
                     if not ((mapp[current_x][current_y+1] == " " and movement == 1) or (mapp[current_x][current_y-1] == " " and movement == 2) or (mapp[current_x+1][current_y] == " " and movement == 0) or (mapp[current_x-1][current_y] == " " and movement == 3)):
                         if mapp[current_x][current_y+1] == " ":
@@ -455,24 +455,6 @@ class MyRob(CRobLinkAngs):
                 return_list.append(2)
 
         return return_list
-        
-       
-    def writeMapToFile(self):
-        global mapp
-
-        zipped_rows = zip(*mapp)
-        transpose_matrix = [list(row) for row in zipped_rows]
-        for i in range (int(len(transpose_matrix)/2)):
-            aux = transpose_matrix[len(transpose_matrix) - 1 - i]
-            transpose_matrix[len(transpose_matrix) - 1 - i] = transpose_matrix[i]
-            transpose_matrix[i] = aux 
-
-        a_file = open("mapping.out", "w")
-        for row in transpose_matrix:
-            for elem in row:
-                if elem == 0: elem = " " 
-                a_file.write(''.join(str(elem)))
-            a_file.write('\n')
 
 
     def paintMapp(self):
