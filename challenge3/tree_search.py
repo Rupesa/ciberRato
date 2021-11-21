@@ -1,6 +1,10 @@
-# ALUNOS:
-# Rodrigo Santos - 89180
-# Rui Santos - 89293
+"""
+	RMI, 2021
+	
+	Authors: 
+	Rodrigo Santos, nº mec 89180
+	Rui Santos, nº mec 89293
+"""
 
 from abc import ABC, abstractmethod
 

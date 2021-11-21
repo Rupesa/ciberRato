@@ -39,7 +39,7 @@ scale= []  # scale to translate GPS to mapp coordinates
 Point1 = [] # 1st ground target
 Point2 = [] # 2nd ground target
 found = 0 # best path found flag
-outputFile = "mapping.out" # nome do output file
+outputFile = "pathC3.out" # nome do output file
 
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
@@ -602,9 +602,9 @@ class MyRob(CRobLinkAngs):
         for s in steps:
             if (i % 2) == 0:
                 if s == Point1:
-                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #1 \n")
+                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #1\n")
                 elif s == Point2:
-                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #2 \n")
+                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #2\n")
                 else:
                     a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + "\n")
             i += 1
