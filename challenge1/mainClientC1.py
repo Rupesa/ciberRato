@@ -1,3 +1,11 @@
+"""
+	RMI, 2021
+	
+	Authors: 
+	Rodrigo Santos, nº mec 89180
+	Rui Santos, nº mec 89293
+"""
+
 import sys
 from croblink import *
 from math import *
@@ -5,8 +13,6 @@ import xml.etree.ElementTree as ET
 
 CELLROWS=7
 CELLCOLS=14
-
-
 
 class MyRob(CRobLinkAngs):
 
@@ -77,60 +83,28 @@ class MyRob(CRobLinkAngs):
         if    self.measures.irSensor[center_id] > 1.7\
            or self.measures.irSensor[left_id]   > 4.5\
            or self.measures.irSensor[right_id]  > 4.5:
-           #or self.measures.irSensor[back_id]   > 3.0:
             self.prev_left = 0
             self.prev_right = 0
             if self.measures.irSensor[left_id]   > self.measures.irSensor[right_id]:
-                print('Rotate right')
                 self.driveMotors(+0.14,-0.14)
             else:
-                print('Rotate left')
                 self.driveMotors(-0.14,+0.14)
-        # elif self.measures.irSensor[left_id] - self.measures.irSensor[right_id] > 0.2:
-        #     print('Centering')
-        #     if self.measures.irSensor[left_id]   > self.measures.irSensor[right_id]:
-        #         self.driveMotors(0.15,0.8)
-        #         print('Centering slowly right')
-        #     else:
-        #         self.driveMotors(0.8,0.15)
-        #         print('Centering slowly left')
         elif self.measures.irSensor[right_id] < 1:
-            print('Go right')
             self.driveMotors(0.15,0.02)
         elif self.measures.irSensor[left_id] < 1:
-            print('Go left')
             self.driveMotors(0.02,0.15)
         elif self.measures.irSensor[right_id] < 1.7:
-            #if self.measures.irSensor[left_id] - self.prev_left > 0:
             if self.prev_left == 0:
                 self.prev_left = 1
                 self.prev_right = 0
-                print('Rotate slowly right')
                 self.driveMotors(0.15,0.1)
         elif self.measures.irSensor[left_id] < 1.7:
-            #if self.measures.irSensor[right_id] - self.prev_right > 0:
             if self.prev_right == 0:
                 self.prev_right = 1
                 self.prev_left = 0
-                print('Rotate slowly left')
                 self.driveMotors(0.1,0.15)
-        # elif self.measures.irSensor[left_id]> 3.0:
-        #     #if self.measures.irSensor[left_id] - self.prev_left > 0:
-        #     if self.prev_left == 0:
-        #         self.prev_left = 1
-        #         print('Rotate slowly right')
-        #         self.driveMotors(0.15,0.04)
-        # elif self.measures.irSensor[right_id]> 3.0:
-        #     #if self.measures.irSensor[right_id] - self.prev_right > 0:
-        #     if self.prev_right == 0:
-        #         self.prev_right = 1
-        #         print('Rotate slowly left')
-        #         self.driveMotors(0.04,0.15)
         else:
-            print('Go')
             self.driveMotors(0.15,0.15)
-        
-        #self.prev_left, self.prev_right = self.measures.irSensor[left_id], self.measures.irSensor[right_id]
 
 class Map():
     def __init__(self, filename):
