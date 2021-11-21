@@ -190,6 +190,8 @@ class MyRob(CRobLinkAngs):
             else:
                 # No need to use the rotation direction var
                 if movement == 1 and (self.measures.compass >= 92 or self.measures.compass <= 88):
+                    if (self.measures.compass >= -92 and self.measures.compass <= -88):
+                        rotation_counter = -5
                     if self.measures.compass < -90 or (self.measures.compass < 180 and self.measures.compass > 90):
                         self.turnRight()
                     else:
@@ -199,6 +201,8 @@ class MyRob(CRobLinkAngs):
                     turning = 0
                     
                 elif movement == 2 and (self.measures.compass <= -92 or self.measures.compass >= -88):
+                    if (self.measures.compass <= 92 and self.measures.compass >= 88):
+                        rotation_counter = -5
                     if self.measures.compass > 90 or (self.measures.compass > -180 and self.measures.compass < -90):
                         self.turnLeft()
                     else:
@@ -208,6 +212,8 @@ class MyRob(CRobLinkAngs):
                     turning = 0
                     
                 elif movement == 0 and (self.measures.compass <= -2 or self.measures.compass >= 2):
+                    if ((self.measures.compass <= -177 and self.measures.compass >= -180) or (self.measures.compass >= 177 and self.measures.compass <= 180)):
+                        rotation_counter = -5
                     if self.measures.compass >= 2:
                         self.turnRight()
                     else:
@@ -217,6 +223,8 @@ class MyRob(CRobLinkAngs):
                     turning = 0
                     
                 elif movement == 3 and ((self.measures.compass >= -177 and self.measures.compass <= 0) or (self.measures.compass <= 177 and self.measures.compass >= 0)):
+                    if (self.measures.compass <= 2 and self.measures.compass >= -2):
+                        rotation_counter = -5
                     if (self.measures.compass <= 177 and self.measures.compass >= 0):
                         self.turnLeft()
                     else:
@@ -239,8 +247,8 @@ class MyRob(CRobLinkAngs):
         y_int = (abs(self.measures.y - current_GPS[1]))
 
         if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(self.measures.x, self.measures.y):
-            if (min_distance - x_int < 0.12) or (min_distance - y_int < 0.12):
-                self.driveMotors(0.01, 0.01)
+            if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15):
+                self.driveMotors(0.02, 0.02)
             else:
                 if movement == 0:
                     if self.measures.compass < -1: # Adjust : slowly left
@@ -319,7 +327,7 @@ class MyRob(CRobLinkAngs):
         global rotation_counter
         rotation_counter += 1
         if (rotation_counter < 6):
-            self.driveMotors(0.14, -0.14)
+            self.driveMotors(0.15, -0.15)
         else:
             self.driveMotors(0.015, -0.015)
     
@@ -327,7 +335,7 @@ class MyRob(CRobLinkAngs):
         global rotation_counter
         rotation_counter += 1
         if (rotation_counter < 6):
-            self.driveMotors(-0.14, 0.14)
+            self.driveMotors(-0.15, 0.15)
         else:
             self.driveMotors(-0.015, 0.015)
 
@@ -555,7 +563,7 @@ class MyRob(CRobLinkAngs):
                 self.translateGPStoMappCoordAndPaint(current_GPS[0]+1, current_GPS[1], " ")
             
         self.translateGPStoMappCoordAndPaint(current_GPS[0], current_GPS[1], "X")
-        self.printMapp(mapp)
+        #self.printMapp(mapp)
          
 
 class Map():
