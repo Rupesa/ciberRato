@@ -36,6 +36,8 @@ mapp = [[0 for x in range(h)] for y in range(w)]
 mapp[27][13] = "I"
 scale= []  # scale to translate GPS to mapp coordinates
 
+outputFile = "mapping.out" # nome do output file
+
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
         CRobLinkAngs.__init__(self, rob_name, rob_id, angles, host)
@@ -464,7 +466,7 @@ class MyRob(CRobLinkAngs):
             transpose_matrix[len(transpose_matrix) - 1 - i] = transpose_matrix[i]
             transpose_matrix[i] = aux 
 
-        a_file = open("mapping.out", "w")
+        a_file = open(outputFile, "w")
         for row in transpose_matrix:
             for elem in row:
                 if elem == 0: elem = " " 
@@ -595,10 +597,12 @@ for i in range(1, len(sys.argv),2):
         host = sys.argv[i + 1]
     elif (sys.argv[i] == "--pos" or sys.argv[i] == "-p") and i != len(sys.argv) - 1:
         pos = int(sys.argv[i + 1])
-    elif (sys.argv[i] == "--robname" or sys.argv[i] == "-p") and i != len(sys.argv) - 1:
+    elif (sys.argv[i] == "--robname" or sys.argv[i] == "-r") and i != len(sys.argv) - 1:
         rob_name = sys.argv[i + 1]
     elif (sys.argv[i] == "--map" or sys.argv[i] == "-m") and i != len(sys.argv) - 1:
         mapc = Map(sys.argv[i + 1])
+    elif (sys.argv[i] == "--outputfile" or sys.argv[i] == "-f") and i != len(sys.argv) - 1:
+        outputFile = sys.argv[i + 1]
     else:
         print("Unkown argument", sys.argv[i])
         quit()
