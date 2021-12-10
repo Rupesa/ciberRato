@@ -311,15 +311,14 @@ class MyRob(CRobLinkAngs):
             return True
             
         else:
-            print("Real:")
-            print(current_GPS[0]-init_GPS[0])
-            print(current_GPS[1]-init_GPS[1])
+            print("\nReal:")
+            print(self.measures.x-init_GPS[0])
+            print(self.measures.y-init_GPS[1])
             print("Estimated:")
             print(est_pos[0])
             print(est_pos[1])
 
-            self.driveMotors(-previous_power_l, -previous_power_r)
-            print("Back")
+            # self.driveMotors(-previous_power_l, -previous_power_r)
             return False
 
              
@@ -543,24 +542,27 @@ class MyRob(CRobLinkAngs):
         left_dif = 0
         right_dif = 0
 
-        if center < 0.8:
-            center_dif = center - 0.4
-        if left < 0.8:
-            left_dif = left - 0.4
-        if right < 0.8:
-            right_dif = right - 0.4
+        if self.measures.irSensor[0] > 1/0.8:
+            center_dif = 0.4 - 1/self.measures.irSensor[0]
+        if 1/self.measures.irSensor[1] > 1/0.8:
+            left_dif = 0.4 - 1/self.measures.irSensor[1]
+        if 1/self.measures.irSensor[2] > 1/0.8:
+            right_dif = 0.4 - 1/self.measures.irSensor[2]
+
+        
+        center_dif = 0
 
         
         # Como estabelecer a relação entre os sensores e a posição ? Qual é o intervalo de valores dos sensores ?
 
         if movement == 0:
-            est_pos = [est_pos[0] + previous_power_l, est_pos[1]]
+            est_pos = [est_pos[0] + previous_power_l + center_dif, est_pos[1]]
         elif movement == 1:
-            est_pos = [est_pos[0], est_pos[1] + previous_power_l]
+            est_pos = [est_pos[0], est_pos[1] + previous_power_l + center_dif]
         elif movement == 2:
-            est_pos = [est_pos[0], est_pos[1] - previous_power_l]
+            est_pos = [est_pos[0], est_pos[1] - previous_power_l - center_dif]
         elif movement == 3:
-            est_pos = [est_pos[0] - previous_power_l, est_pos[1]]
+            est_pos = [est_pos[0] - previous_power_l - center_dif, est_pos[1]]
 
 
     def paintMapp(self):
