@@ -63,6 +63,8 @@ class MyRob(CRobLinkAngs):
         global current_GPS
         global scale
         global decimal_init_GPS
+
+        global est_pos
         
         if self.status != 0:
             print("Connection refused or error")
@@ -71,11 +73,13 @@ class MyRob(CRobLinkAngs):
         state = 'stop'
         stopped_state = 'run'
         self.readSensors()
-        init_GPS = [(self.measures.x), (self.measures.y)]
+        # init_GPS = [(self.measures.x), (self.measures.y)]
+        init_GPS = [(est_pos[0]), (est_pos[1])]
         current_GPS = init_GPS
         decimal_init_GPS = [init_GPS[0]%1,init_GPS[1]%1]
         
         scale = [init_GPS[0] - 27, init_GPS[1] - 13]
+        init_GPS = [(self.measures.x), (self.measures.y)]
         
         self.paintMapp()
         
@@ -123,18 +127,21 @@ class MyRob(CRobLinkAngs):
         global path_list
         global goingToDest
         global dontGoNow
+
+        global est_pos
         
         center_id = 0
         left_id = 1
         right_id = 2
         back_id = 3
 
-        self.translateGPStoMappCoordAndPaint((self.measures.x), (self.measures.y), "X")
+        # self.translateGPStoMappCoordAndPaint((self.measures.x), (self.measures.y), "X")
+        self.translateGPStoMappCoordAndPaint((est_pos[0]), (est_pos[1]), "X")
 
         if ongoing:
             moved = self.moveforward()
             if not moved:
-                current_GPS = [(self.measures.x), (self.measures.y)]
+                current_GPS = [(est_pos[0]), (est_pos[1])]
                 self.paintMapp()
                 ongoing = False
         else:
@@ -249,15 +256,18 @@ class MyRob(CRobLinkAngs):
         global previous_power_r
 
         straight_speed = 0.15
-        min_distance = 2 - 0.2
+        min_distance = 2 - 0.3
         # min_distance = 2
         ongoing = True
         
-        x_int = (abs(self.measures.x - current_GPS[0]))
-        y_int = (abs(self.measures.y - current_GPS[1]))
+        # x_int = (abs(self.measures.x - current_GPS[0]))
+        # y_int = (abs(self.measures.y - current_GPS[1]))
+        x_int = (abs(est_pos[0] - current_GPS[0]))
+        y_int = (abs(est_pos[1] - current_GPS[1]))
 
-        if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(self.measures.x, self.measures.y):
+        # if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(self.measures.x, self.measures.y):
         # if ((x_int < min_distance) and (y_int < min_distance)):
+        if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(est_pos[0], est_pos[1]):
             if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15):
                 self.driveMotors(0.02, 0.02)
                 self.update_previous_motors(0.02, 0.02)
@@ -527,42 +537,66 @@ class MyRob(CRobLinkAngs):
         previous_power_l = (l + previous_power_l) / 2
         previous_power_r = (r + previous_power_r) / 2
 
+
+    def round_base(self, x, base = 2):
+        return base * round(x/base)
+
     
     def position_estimator(self, movement):
         global est_pos
         global previous_power_r
         global previous_power_l
 
-        center = 1/self.measures.irSensor[0]
-        left = 1/self.measures.irSensor[1]
-        right = 1/self.measures.irSensor[2]
-        back = 1/self.measures.irSensor[3]
-
         center_dif = 0
         left_dif = 0
         right_dif = 0
 
-        if self.measures.irSensor[0] > 1/0.8:
+        near_wall = False
+
+        if self.measures.irSensor[0] > 1/0.7:
+            print("Aquiii")
+            near_wall = True
             center_dif = 0.4 - 1/self.measures.irSensor[0]
-        if 1/self.measures.irSensor[1] > 1/0.8:
+        if 1/self.measures.irSensor[1] > 1/0.7:
             left_dif = 0.4 - 1/self.measures.irSensor[1]
-        if 1/self.measures.irSensor[2] > 1/0.8:
+        if 1/self.measures.irSensor[2] > 1/0.7:
             right_dif = 0.4 - 1/self.measures.irSensor[2]
 
         
-        center_dif = 0
+        # center_dif = 0 # Não está a ser aplicado
 
         
         # Como estabelecer a relação entre os sensores e a posição ? Qual é o intervalo de valores dos sensores ?
-
-        if movement == 0:
-            est_pos = [est_pos[0] + previous_power_l + center_dif, est_pos[1]]
-        elif movement == 1:
-            est_pos = [est_pos[0], est_pos[1] + previous_power_l + center_dif]
-        elif movement == 2:
-            est_pos = [est_pos[0], est_pos[1] - previous_power_l - center_dif]
-        elif movement == 3:
-            est_pos = [est_pos[0] - previous_power_l - center_dif, est_pos[1]]
+        if near_wall:
+            if movement == 0:
+                print(self.round_base(est_pos[0]))
+                print("Prev: "+str(est_pos))
+                est_pos = [0.3 * (est_pos[0] + previous_power_l) + 0.7 * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
+                print("After 0 " + str(est_pos))
+            elif movement == 1:
+                print(self.round_base(est_pos[1]))
+                print("Prev: "+str(est_pos))
+                est_pos = [est_pos[0], 0.3 * (est_pos[1] + previous_power_l) + 0.7 * (self.round_base(est_pos[1]) + center_dif)]
+                print("After 1 " + str(est_pos))
+            elif movement == 2:
+                print(self.round_base(est_pos[1]))
+                print("Prev: "+str(est_pos))
+                est_pos = [est_pos[0], 0.3 * (est_pos[1] - previous_power_l) + 0.7 * (self.round_base(est_pos[1]) - center_dif)]
+                print("After 2 " + str(est_pos))
+            elif movement == 3:
+                print(self.round_base(est_pos[0]))
+                print("Prev: "+str(est_pos))
+                est_pos = [0.3 * (est_pos[0] - previous_power_l) + 0.7 * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
+                print("After 3 " + str(est_pos))
+        else:
+            if movement == 0:
+                est_pos = [est_pos[0] + previous_power_l + center_dif, est_pos[1]]
+            elif movement == 1:
+                est_pos = [est_pos[0], est_pos[1] + previous_power_l + center_dif]
+            elif movement == 2:
+                est_pos = [est_pos[0], est_pos[1] - previous_power_l - center_dif]
+            elif movement == 3:
+                est_pos = [est_pos[0] - previous_power_l - center_dif, est_pos[1]]
 
 
     def paintMapp(self):
