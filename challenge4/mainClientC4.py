@@ -285,10 +285,13 @@ class MyRob(CRobLinkAngs):
 
         # if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(self.measures.x, self.measures.y):
         # if ((x_int < min_distance) and (y_int < min_distance)):
+        print("")
+        print((x_int < min_distance) and (y_int < min_distance))
+        print(not self.verifyDecimals(est_pos[0], est_pos[1]))
         if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(est_pos[0], est_pos[1]):
             if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15):
-                self.driveMotors(0.02, 0.02)
-                self.update_previous_motors(0.02, 0.02)
+                self.driveMotors(0.04, 0.04)
+                self.update_previous_motors(0.04, 0.04)
             #else:
             elif movement == 0:
                 if self.measures.compass < -1: # Adjust : slowly left
@@ -346,7 +349,7 @@ class MyRob(CRobLinkAngs):
             # print(est_pos[0])
             # print(est_pos[1])
 
-            # self.driveMotors(-previous_power_l, -previous_power_r)
+            self.driveMotors(-0.9*previous_power_l, -0.9*previous_power_r)
             return False
 
              
@@ -423,26 +426,36 @@ class MyRob(CRobLinkAngs):
         global decimal_init_GPS
         max_gap = 0.05
         if movement == 0 or movement == 3:
-            return abs((x%1) - decimal_init_GPS[0]) < max_gap
+            print("x%1: "+str(x%1))
+            # return abs((x%1) - decimal_init_GPS[0]) < max_gap
+            return x%1 < max_gap or x%1 > 1-max_gap
         elif movement == 1 or movement == 2:
-            return abs((y%1) - decimal_init_GPS[1]) < max_gap
+            print("y%1: "+str(y%1))
+            # return abs((y%1) - decimal_init_GPS[1]) < max_gap
+            return y%1 < max_gap or y%1 > 1-max_gap
+
 
     
     def getPathToSpace(self, current_x, current_y):
         global path_list
     
-        goal = self.getNearestSpace(current_x, current_y)
-        if not goal:
-            return 2
-        print("\nNearest Space: "+str(goal))
-        zeros_map = self.get_zeros_map()
-        # ciberrato = CiberRato(zeros_map)
-        # nextPosition = SearchProblem(ciberrato, [current_x, current_y], goal)
-        # st = SearchTree(nextPosition)
-        # steps = st.search()
-        # path_list = self.path_to_movements(steps)
-        steps = search(zeros_map, 1, [current_x, current_y], [goal[0], goal[1]])
-        path_list = self.map_to_movements(steps, [current_x, current_y], goal)
+        # goal = self.getNearestSpace(current_x, current_y)
+        # if not goal:
+        #     return 2
+        # print("\nNearest Space: "+str(goal))
+        # zeros_map = self.get_zeros_map()
+
+        # # ciberrato = CiberRato(zeros_map)
+        # # nextPosition = SearchProblem(ciberrato, [current_x, current_y], goal)
+        # # st = SearchTree(nextPosition)
+        # # steps = st.search()
+        # # path_list = self.path_to_movements(steps)
+
+        # steps = search(zeros_map, 1, [current_x, current_y], [goal[0], goal[1]])
+        # path_list = self.map_to_movements(steps, [current_x, current_y], goal)
+        # print(path_list)
+
+        path_list = self.getNearestSpace2(current_x, current_y)
         print(path_list)
 
         return 1
@@ -464,6 +477,29 @@ class MyRob(CRobLinkAngs):
                         minDist = dist
 
         return closestBreach
+
+
+    def getNearestSpace2(self, current_x, current_y):
+        minLen = 900
+        path = []
+        lsts = self.getAllSpaces()
+        zeros_map = self.get_zeros_map()
+        for lst in lsts:
+            steps = search(zeros_map, 1, [current_x, current_y], [lst[0], lst[1]])
+            path_list = self.map_to_movements(steps, [current_x, current_y], lst)
+            if len(path_list) < minLen:
+                path = path_list
+                minLen = len(path_list)
+        return path
+
+
+    def getAllSpaces(self):
+        lst = []
+        for i in range(w):
+            for j in range(h):
+                if mapp[i][j] == ' ':
+                    lst.append([i,j])
+        return lst
         
 
     def get_zeros_map(self):
@@ -574,14 +610,14 @@ class MyRob(CRobLinkAngs):
 
         near_wall = False
 
-        if self.measures.irSensor[0] > 1/0.8:
+        if self.measures.irSensor[0] > 1/1.0:
             # print("Aquiii")
             near_wall = True
             center_dif = 0.4 - 1/self.measures.irSensor[0]
-        if 1/self.measures.irSensor[1] > 1/0.7:
-            left_dif = 0.4 - 1/self.measures.irSensor[1]
-        if 1/self.measures.irSensor[2] > 1/0.7:
-            right_dif = 0.4 - 1/self.measures.irSensor[2]
+        # if 1/self.measures.irSensor[1] > 1/0.7:
+        #     left_dif = 0.4 - 1/self.measures.irSensor[1]
+        # if 1/self.measures.irSensor[2] > 1/0.7:
+        #     right_dif = 0.4 - 1/self.measures.irSensor[2]
 
         
         # center_dif = 0 # Não está a ser aplicado
@@ -591,25 +627,30 @@ class MyRob(CRobLinkAngs):
 
         if near_wall:
             if movement == 0:
-                # print(self.round_base(est_pos[0]))
-                # print("Prev: "+str(est_pos))
+                print(self.round_base(est_pos[0]))
+                print("Prev: "+str(est_pos))
                 est_pos = [motor_pos_weight * (est_pos[0] + previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
-                # print("After 0 " + str(est_pos))
+                print("After 0 " + str(est_pos))
             elif movement == 1:
-                # print(self.round_base(est_pos[1]))
-                # print("Prev: "+str(est_pos))
+                print(self.round_base(est_pos[1]))
+                print("Prev: "+str(est_pos))
                 est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[1]) + center_dif)]
-                # print("After 1 " + str(est_pos))
+                print("After 1 " + str(est_pos))
             elif movement == 2:
-                # print(self.round_base(est_pos[1]))
-                # print("Prev: "+str(est_pos))
+                print(self.round_base(est_pos[1]))
+                print("Prev: "+str(est_pos))
                 est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[1]) - center_dif)]
-                # print("After 2 " + str(est_pos))
+                print("After 2 " + str(est_pos))
             elif movement == 3:
-                # print(self.round_base(est_pos[0]))
-                # print("Prev: "+str(est_pos))
+                print(self.round_base(est_pos[0]))
+                print("Prev: "+str(est_pos))
                 est_pos = [motor_pos_weight * (est_pos[0] - previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
-                # print("After 3 " + str(est_pos))
+                print("After 3 " + str(est_pos))
+
+            # print(self.round_base(est_pos[0]))
+            # print("Prev: "+str(est_pos))
+            # print("After 0 " + str(est_pos))
+            
         else:
             if movement == 0:
                 est_pos = [est_pos[0] + previous_power_l, est_pos[1]]
