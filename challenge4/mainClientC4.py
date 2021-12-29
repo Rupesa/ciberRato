@@ -13,8 +13,8 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import random
 
-from tree_search import *
-from ciberRato import CiberRato
+#from tree_search import *
+#from ciberRato import CiberRato
 
 from a_star import *
 
@@ -32,6 +32,7 @@ decimal_init_GPS = [0,0]
 path_list = []  # movement path list
 goingToDest = 0
 dontGoNow = False
+goingToInit = 0
 
 # saves the previous value given to the motors
 previous_power_l = 0
@@ -43,8 +44,7 @@ mapp = [[0 for x in range(h)] for y in range(w)]
 mapp[27][13] = "I"
 scale= []  # scale to translate GPS to mapp coordinates
 
-Point1 = [] # 1st ground target
-Point2 = [] # 2nd ground target
+Points = []
 found = 0 # best path found flag
 
 outputFile = "mapping.out" # nome do output file
@@ -133,9 +133,9 @@ class MyRob(CRobLinkAngs):
         global path_list
         global goingToDest
         global dontGoNow
-        global Point1
-        global Point2
+        global Points
         global found
+        global goingToInit
 
         global est_pos
         
@@ -144,9 +144,23 @@ class MyRob(CRobLinkAngs):
         right_id = 2
         back_id = 3
 
-        # self.translateGPStoMappCoordAndPaint((self.measures.x), (self.measures.y), "X")
         self.translateGPStoMappCoordAndPaint((est_pos[0]), (est_pos[1]), "X")
         current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
+
+        if (current_x != 27 or current_y != 13) and found and not goingToInit:
+            zeros_map = self.get_zeros_map()
+            #ciberrato = CiberRato(zeros_map)
+            #nextPosition = SearchProblem(ciberrato, [current_x, current_y], [27, 13])
+            #st = SearchTree(nextPosition, 'greedy')
+            #steps = st.search()
+            steps = search(zeros_map, 1, [current_x, current_y], [27, 13])
+            path_list = self.path_to_movements(steps)
+            goingToInit = 1
+            
+        elif goingToInit and current_x == 27 and current_y == 13:
+            print("Finishing")
+            self.finish()
+            sys.exit()
 
         if ongoing:
             moved = self.moveforward()
@@ -154,14 +168,12 @@ class MyRob(CRobLinkAngs):
                 current_GPS = [(est_pos[0]), (est_pos[1])]
                 self.paintMapp()
                 self.checkGround()
-                # if Point1 != [] and Point2 != [] and not found:
-                #     done = self.calcBestPath_init_P1_P2()
-                #     if done and self.getNearestSpace(current_x, current_y) == []:
-                #         found = 1
-                #         print('Done!')
-                #         self.finish()
-                #         sys.exit()
                 ongoing = False
+                if len(Points) == ((int)(self.nBeacons) - 1) and not found:
+                    done = self.calcBestPath_init_P1_P2()
+                    if done and self.getNearestSpace(current_x, current_y) == []:
+                        found = 1    
+                        self.driveMotors(0,0)
         else:
 
             if turning == 0:
@@ -746,42 +758,41 @@ class MyRob(CRobLinkAngs):
         self.printMapp(mapp)
         
     def checkGround(self):
-        global Point1
-        global Point2
+        global Points
          
         current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
         
-        if self.measures.ground == 1 and Point1 == []:
-             Point1 = [current_x, current_y]
-         
-        if self.measures.ground == 2 and Point2 == []:
-             Point2 = [current_x, current_y]
+        if self.measures.ground != -1 and self.measures.ground != 0 and [current_x, current_y] not in Points:
+             Points += [[current_x, current_y]]
+
               
     def calcBestPath_init_P1_P2(self):
-        global Point1
-        global Point2
+        global Points
         init = [27,13]
          
         zeros_map = self.get_zeros_map()
-        ciberrato = CiberRato(zeros_map)
+        #ciberrato = CiberRato(zeros_map)
         
-        nextPosition = SearchProblem(ciberrato, init, Point1)
-        st = SearchTree(nextPosition)
-        steps = st.search()
-        if steps == []:
-            return 0
+        lastP = init
+        steps = []
+        for p in Points:
+            #nextPosition = SearchProblem(ciberrato, lastP, p)
+            #st = SearchTree(nextPosition)
+            
+            if lastP == init:
+                #steps += st.search()
+                steps += search(zeros_map, 1, lastP, p)
+            else: 
+                #steps += st.search()[1:]
+                steps += search(zeros_map, 1, lastP, p)[1:]
+            lastP = p
+            if steps == []:
+                return 0
         
-        nextPosition = SearchProblem(ciberrato, Point1, Point2)
-        st = SearchTree(nextPosition)
-        new_steps = st.search()[1:]
-        if new_steps == []:
-            return 0
-        for n_s in new_steps:
-            steps.append(n_s)
-        
-        nextPosition = SearchProblem(ciberrato, Point2, init)
-        st = SearchTree(nextPosition)
-        new_steps = st.search()[1:]
+        #nextPosition = SearchProblem(ciberrato, lastP, init)
+        #st = SearchTree(nextPosition)
+        new_steps = search(zeros_map, 1, lastP, init)[1:]
+        #new_steps = st.search()[1:]
         if new_steps == []:
             return 0
         for n_s in new_steps:
@@ -792,17 +803,16 @@ class MyRob(CRobLinkAngs):
         return 1
         
     def writeBestPathToFile(self, steps):
-        global Point1
-        global Point2
+        global Points
         
         i = 0
+        c = 0
         a_file = open(outputFile, "w")
         for s in steps:
             if (i % 2) == 0:
-                if s == Point1:
-                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #1 \n")
-                elif s == Point2:
-                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #2 \n")
+                if s in Points:
+                    c += 1
+                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #" + str(c) + " \n")
                 else:
                     a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + "\n")
             i += 1

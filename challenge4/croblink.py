@@ -1,4 +1,3 @@
-
 import socket
 
 UDP_IP = "127.0.0.1"
@@ -13,7 +12,6 @@ class CRobLink:
         self.robName = robName
         self.robId = robId
         self.host = host
-
 
         self.sock = socket.socket(socket.AF_INET, # Internet
                              socket.SOCK_DGRAM) # UDP
@@ -39,7 +37,9 @@ class CRobLink:
 #            self.status = -1
 #            return 
         self.status = handler.status
-
+        if self.status==0:
+            self.nBeacons = handler.nBeacons
+            #print "nBeacons", self.nBeacons
 
     def readSensors(self):
         data, (host,port) = self.sock.recvfrom(4096)
@@ -117,6 +117,9 @@ class CRobLinkAngs(CRobLink):
 #            self.status = -1
 #            return 
         self.status = handler.status
+        if self.status==0:
+            self.nBeacons = handler.nBeacons
+            #print "nBeacons", self.nBeacons
 
 class CMeasures:
 
@@ -176,6 +179,8 @@ class StructureHandler(sax.ContentHandler):
                 self.status = 0
                 return
             self.status = -1
+        elif name == "Parameters":
+            self.nBeacons = attrs["NBeacons"]
         elif name=="Measures":
             self.measures.time = int(attrs["Time"])
         elif name=="Sensors":
@@ -251,4 +256,3 @@ class StructureHandler(sax.ContentHandler):
 
 #    def endElement(self, name):
         #print 'End of element:', name
-
