@@ -12,7 +12,7 @@ from math import *
 import xml.etree.ElementTree as ET
 import numpy as np
 import random
-
+import itertools
 #from tree_search import *
 #from ciberRato import CiberRato
 
@@ -47,7 +47,7 @@ scale= []  # scale to translate GPS to mapp coordinates
 Points = []
 found = 0 # best path found flag
 
-outputFile = "mapping.out" # nome do output file
+outputFile = "output" # nome do output file
 
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
@@ -69,7 +69,7 @@ class MyRob(CRobLinkAngs):
         global current_GPS
         global scale
         global decimal_init_GPS
-
+        global Points
         global est_pos
         
         if self.status != 0:
@@ -79,11 +79,12 @@ class MyRob(CRobLinkAngs):
         state = 'stop'
         stopped_state = 'run'
         self.readSensors()
+        
         # init_GPS = [(self.measures.x), (self.measures.y)]
         init_GPS = [(est_pos[0]), (est_pos[1])]
         current_GPS = init_GPS
         decimal_init_GPS = [init_GPS[0]%1,init_GPS[1]%1]
-        
+        Points = [[]] * ((int)(self.nBeacons)-1)
         scale = [init_GPS[0] - 27, init_GPS[1] - 13]
         init_GPS = [(self.measures.x), (self.measures.y)]
         
@@ -136,7 +137,7 @@ class MyRob(CRobLinkAngs):
         global Points
         global found
         global goingToInit
-
+        global mapp
         global est_pos
         
         center_id = 0
@@ -158,6 +159,11 @@ class MyRob(CRobLinkAngs):
             goingToInit = 1
             
         elif goingToInit and current_x == 27 and current_y == 13:
+            i = 1
+            for point in Points:
+                mapp[point[0]][point[1]] = i
+                i= i+1
+            self.writeMapToFile()
             print("Finishing")
             self.finish()
             sys.exit()
@@ -169,7 +175,7 @@ class MyRob(CRobLinkAngs):
                 self.paintMapp()
                 self.checkGround()
                 ongoing = False
-                if len(Points) == ((int)(self.nBeacons) - 1) and not found:
+                if self.pointsFull() and not found:
                     done = self.calcBestPath_init_P1_P2()
                     if done and self.getNearestSpace(current_x, current_y) == []:
                         found = 1    
@@ -192,7 +198,6 @@ class MyRob(CRobLinkAngs):
                             path_list.pop(0)
 
                 if goingToDest == 0:
-                    # current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
                     # If there is a space near the mouse, go for it!
                     if not ((mapp[current_x][current_y+1] == " " and movement == 1) or (mapp[current_x][current_y-1] == " " and movement == 2) or (mapp[current_x+1][current_y] == " " and movement == 0) or (mapp[current_x-1][current_y] == " " and movement == 3)):
                         if mapp[current_x][current_y+1] == " ":
@@ -297,9 +302,9 @@ class MyRob(CRobLinkAngs):
 
         # if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(self.measures.x, self.measures.y):
         # if ((x_int < min_distance) and (y_int < min_distance)):
-        print("")
-        print((x_int < min_distance) and (y_int < min_distance))
-        print(not self.verifyDecimals(est_pos[0], est_pos[1]))
+        #print("")
+        #print((x_int < min_distance) and (y_int < min_distance))
+        #print(not self.verifyDecimals(est_pos[0], est_pos[1]))
         if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(est_pos[0], est_pos[1]):
             if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15):
                 self.driveMotors(0.04, 0.04)
@@ -438,11 +443,11 @@ class MyRob(CRobLinkAngs):
         global decimal_init_GPS
         max_gap = 0.05
         if movement == 0 or movement == 3:
-            print("x%1: "+str(x%1))
+            #print("x%1: "+str(x%1))
             # return abs((x%1) - decimal_init_GPS[0]) < max_gap
             return x%1 < max_gap or x%1 > 1-max_gap
         elif movement == 1 or movement == 2:
-            print("y%1: "+str(y%1))
+            #print("y%1: "+str(y%1))
             # return abs((y%1) - decimal_init_GPS[1]) < max_gap
             return y%1 < max_gap or y%1 > 1-max_gap
 
@@ -468,7 +473,7 @@ class MyRob(CRobLinkAngs):
         # print(path_list)
 
         path_list = self.getNearestSpace2(current_x, current_y)
-        print(path_list)
+        #print(path_list)
 
         return 1
 
@@ -591,10 +596,11 @@ class MyRob(CRobLinkAngs):
             transpose_matrix[len(transpose_matrix) - 1 - i] = transpose_matrix[i]
             transpose_matrix[i] = aux 
 
-        a_file = open(outputFile, "w")
+        a_file = open(outputFile+".map", "w")
         for row in transpose_matrix:
             for elem in row:
-                if elem == 0: elem = " " 
+                if elem == 0: elem = " "
+                if elem == "I": elem = "0"
                 a_file.write(''.join(str(elem)))
             a_file.write('\n')
 
@@ -639,25 +645,25 @@ class MyRob(CRobLinkAngs):
 
         if near_wall:
             if movement == 0:
-                print(self.round_base(est_pos[0]))
-                print("Prev: "+str(est_pos))
+                #print(self.round_base(est_pos[0]))
+                #print("Prev: "+str(est_pos))
                 est_pos = [motor_pos_weight * (est_pos[0] + previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
-                print("After 0 " + str(est_pos))
+                #print("After 0 " + str(est_pos))
             elif movement == 1:
-                print(self.round_base(est_pos[1]))
-                print("Prev: "+str(est_pos))
+                #print(self.round_base(est_pos[1]))
+                #print("Prev: "+str(est_pos))
                 est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[1]) + center_dif)]
-                print("After 1 " + str(est_pos))
+                #print("After 1 " + str(est_pos))
             elif movement == 2:
-                print(self.round_base(est_pos[1]))
-                print("Prev: "+str(est_pos))
+                #print(self.round_base(est_pos[1]))
+                #print("Prev: "+str(est_pos))
                 est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[1]) - center_dif)]
-                print("After 2 " + str(est_pos))
+                #print("After 2 " + str(est_pos))
             elif movement == 3:
-                print(self.round_base(est_pos[0]))
-                print("Prev: "+str(est_pos))
+                #print(self.round_base(est_pos[0]))
+                #print("Prev: "+str(est_pos))
                 est_pos = [motor_pos_weight * (est_pos[0] - previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
-                print("After 3 " + str(est_pos))
+                #print("After 3 " + str(est_pos))
 
             # print(self.round_base(est_pos[0]))
             # print("Prev: "+str(est_pos))
@@ -753,9 +759,11 @@ class MyRob(CRobLinkAngs):
                 self.translateGPStoMappCoordAndPaint(current_GPS[0]+1, current_GPS[1], "|")
             else:
                 self.translateGPStoMappCoordAndPaint(current_GPS[0]+1, current_GPS[1], " ")
-            
-        self.translateGPStoMappCoordAndPaint(current_GPS[0], current_GPS[1], "X")
-        self.printMapp(mapp)
+        if self.measures.ground != -1 and self.measures.ground != 0:    
+            self.translateGPStoMappCoordAndPaint(current_GPS[0], current_GPS[1], str(self.measures.ground))
+        else:
+            self.translateGPStoMappCoordAndPaint(current_GPS[0], current_GPS[1], "X")
+        #self.printMapp(mapp)
         
     def checkGround(self):
         global Points
@@ -763,7 +771,9 @@ class MyRob(CRobLinkAngs):
         current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
         
         if self.measures.ground != -1 and self.measures.ground != 0 and [current_x, current_y] not in Points:
-             Points += [[current_x, current_y]]
+             Points[self.measures.ground-1] = [current_x, current_y]
+        
+        print(Points)
 
               
     def calcBestPath_init_P1_P2(self):
@@ -771,52 +781,115 @@ class MyRob(CRobLinkAngs):
         init = [27,13]
          
         zeros_map = self.get_zeros_map()
-        #ciberrato = CiberRato(zeros_map)
         
-        lastP = init
-        steps = []
-        for p in Points:
-            #nextPosition = SearchProblem(ciberrato, lastP, p)
-            #st = SearchTree(nextPosition)
+        paths = []
+        bestpath = []
+        all_points = self.getAllPointCombination()
+        
+        for path in all_points:
             
-            if lastP == init:
-                #steps += st.search()
-                steps += search(zeros_map, 1, lastP, p)
-            else: 
-                #steps += st.search()[1:]
-                steps += search(zeros_map, 1, lastP, p)[1:]
-            lastP = p
-            if steps == []:
+            lastP = init
+            steps = []
+            for p in path:
+                     
+                if lastP == init:
+                    n_steps = search(zeros_map, 1, lastP, p)
+                    n_steps = self.map_to_movements(n_steps, lastP, p)
+                    
+                    for n_s in n_steps:
+                        steps.append(n_s)
+                    if steps == []:
+                        return 0
+                else:
+                    new_steps = search(zeros_map, 1, lastP, p)
+                    new_steps = self.map_to_movements(new_steps, lastP, p)
+                    
+                    if new_steps == []:
+                        return 0
+                    else:
+                        for n_s in new_steps:
+                            steps.append(n_s)
+                lastP = p
+            new_steps = search(zeros_map, 1, lastP, init)
+            new_steps = self.map_to_movements(new_steps, lastP, init)
+            if new_steps == []:
                 return 0
-        
-        #nextPosition = SearchProblem(ciberrato, lastP, init)
-        #st = SearchTree(nextPosition)
-        new_steps = search(zeros_map, 1, lastP, init)[1:]
-        #new_steps = st.search()[1:]
-        if new_steps == []:
-            return 0
-        for n_s in new_steps:
-            steps.append(n_s)
-        
-        self.writeBestPathToFile(steps)
+            for n_s in new_steps:
+                steps.append(n_s)
+           
+            paths.append(steps)
+
+        for p in paths:
+            if bestpath == []:
+                bestpath = p
+            else:
+                if len(p) < len(bestpath):
+                    bestpath = p    
+
+        self.writeBestPathToFile(bestpath)
         
         return 1
         
-    def writeBestPathToFile(self, steps):
+    def getAllPointCombination(self):
+        global Points
+        
+        points_prod = [p for p in itertools.product(Points, repeat=len(Points))]
+    
+        for p in Points:
+            j=0
+            inds = []
+            for prod in points_prod:
+                indices = [i for i, x in enumerate(prod) if x == p]
+                if len(indices) > 1:
+                    inds.append(j)
+                    j=j-1
+                j=j+1
+            for ind in inds:
+                del points_prod[ind]
+                
+        return points_prod
+        
+    def writeBestPathToFile(self, bestpath):
         global Points
         
         i = 0
         c = 0
-        a_file = open(outputFile, "w")
+        steps = self.movements_to_steps(bestpath)
+        
+        a_file = open(outputFile+".path", "w")
         for s in steps:
             if (i % 2) == 0:
                 if s in Points:
                     c += 1
-                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #" + str(c) + " \n")
+                    a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + " #" + str(Points.index(s)+1) + " \n")
                 else:
                     a_file.write(str(s[0] - 27) + " " + str(s[1] - 13) + "\n")
             i += 1
-         
+    
+    def movements_to_steps(self, moves):
+        
+        steps = [[27, 13]]
+        for m in moves:
+            if m == 0:
+               nextStep = [steps[-1][0]+1, steps[-1][1]]
+            elif m == 3:
+               nextStep = [steps[-1][0]-1, steps[-1][1]]
+            elif m == 1:
+               nextStep = [steps[-1][0], steps[-1][1]+1]
+            elif m == 2:
+               nextStep = [steps[-1][0], steps[-1][1]-1]
+            steps.append(nextStep)
+            
+        return steps
+     
+    def pointsFull(self):
+        global Points
+        
+        for p in Points:
+            if p == []:
+                return 0
+        
+        return 1 
 
 class Map():
     def __init__(self, filename):
@@ -874,3 +947,4 @@ if __name__ == '__main__':
         rob.printMap()
     
     rob.run()
+
