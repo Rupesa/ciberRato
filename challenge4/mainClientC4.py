@@ -33,6 +33,7 @@ path_list = []  # movement path list
 goingToDest = 0
 dontGoNow = False
 goingToInit = 0
+goingAwayWall = 0
 
 # saves the previous value given to the motors
 previous_power_l = 0
@@ -172,6 +173,7 @@ class MyRob(CRobLinkAngs):
             moved = self.moveforward()
             if not moved:
                 current_GPS = [(est_pos[0]), (est_pos[1])]
+                print("Last pos: "+str(current_GPS))
                 self.paintMapp()
                 self.checkGround()
                 ongoing = False
@@ -237,7 +239,7 @@ class MyRob(CRobLinkAngs):
             else:
                 # No need to use the rotation direction var
                 if movement == 1 and (self.measures.compass >= 92 or self.measures.compass <= 88):
-                    if (self.measures.compass >= -92 and self.measures.compass <= -88):
+                    if (self.measures.compass >= -95 and self.measures.compass <= -85):
                         rotation_counter = -5
                     if self.measures.compass < -90 or (self.measures.compass < 180 and self.measures.compass > 90):
                         self.turnRight()
@@ -248,7 +250,7 @@ class MyRob(CRobLinkAngs):
                     turning = 0
                     
                 elif movement == 2 and (self.measures.compass <= -92 or self.measures.compass >= -88):
-                    if (self.measures.compass <= 92 and self.measures.compass >= 88):
+                    if (self.measures.compass <= 95 and self.measures.compass >= 85):
                         rotation_counter = -5
                     if self.measures.compass > 90 or (self.measures.compass > -180 and self.measures.compass < -90):
                         self.turnLeft()
@@ -259,7 +261,7 @@ class MyRob(CRobLinkAngs):
                     turning = 0
                     
                 elif movement == 0 and (self.measures.compass <= -2 or self.measures.compass >= 2):
-                    if ((self.measures.compass <= -177 and self.measures.compass >= -180) or (self.measures.compass >= 177 and self.measures.compass <= 180)):
+                    if ((self.measures.compass <= -175 and self.measures.compass >= -180) or (self.measures.compass >= 175 and self.measures.compass <= 180)):
                         rotation_counter = -5
                     if self.measures.compass >= 2:
                         self.turnRight()
@@ -270,7 +272,7 @@ class MyRob(CRobLinkAngs):
                     turning = 0
                     
                 elif movement == 3 and ((self.measures.compass >= -177 and self.measures.compass <= 0) or (self.measures.compass <= 177 and self.measures.compass >= 0)):
-                    if (self.measures.compass <= 2 and self.measures.compass >= -2):
+                    if (self.measures.compass <= 4 and self.measures.compass >= -4):
                         rotation_counter = -5
                     if (self.measures.compass <= 177 and self.measures.compass >= 0):
                         self.turnLeft()
@@ -289,6 +291,7 @@ class MyRob(CRobLinkAngs):
         global est_pos
         global previous_power_l
         global previous_power_r
+        global goingAwayWall
 
         straight_speed = 0.15
         min_distance = 2 - 0.3
@@ -297,7 +300,7 @@ class MyRob(CRobLinkAngs):
         
         # x_int = (abs(self.measures.x - current_GPS[0]))
         # y_int = (abs(self.measures.y - current_GPS[1]))
-        x_int = (abs(est_pos[0] - current_GPS[0]))
+        x_int = (abs(est_pos[0] - current_GPS[0])) #quanto já avançou
         y_int = (abs(est_pos[1] - current_GPS[1]))
 
         # if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(self.measures.x, self.measures.y):
@@ -305,54 +308,103 @@ class MyRob(CRobLinkAngs):
         #print("")
         #print((x_int < min_distance) and (y_int < min_distance))
         #print(not self.verifyDecimals(est_pos[0], est_pos[1]))
-        if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(est_pos[0], est_pos[1]):
-            if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15):
+        # print("Estimated pos: :"+str(est_pos))
+
+        # print(current_GPS)
+        # if self.measures.irSensor[2] > 4.8 or self.measures.irSensor[1] > 4.8:
+        #     print("PAREDE!!")
+
+        # alterar veryfyDecimals para dar True quando o robô já passou para além da coordenada
+        # resolver rotação lenta
+        # estimar distancia percorrida pelo mínimo/média dos motors
+        # quando muito proximo de uma parede e pretende ir em frente, forçar viragem
+        # estimar posição através dos sensores laterais
+
+        # if ((x_int < min_distance) and (y_int < min_distance)) or not self.verifyDecimals(est_pos[0], est_pos[1]):
+        distToDest = self.distanceToDestination()
+        # print(distToDest) 
+        if ((x_int < min_distance) and (y_int < min_distance)) or distToDest > 0.04:
+            # if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15): # alterar para a diferença entre coordenada atual e destino
+            if distToDest < 0.4 and (x_int > min_distance or y_int > min_distance):
                 self.driveMotors(0.04, 0.04)
                 self.update_previous_motors(0.04, 0.04)
-            #else:
-            elif movement == 0:
-                if self.measures.compass < -1: # Adjust : slowly left
-                    self.driveMotors(0.11,0.14)
-                    self.update_previous_motors(0.11, 0.14)
-                elif self.measures.compass > 1: # Adjust : slowly right
-                    self.driveMotors(0.14,0.11)
-                    self.update_previous_motors(0.14, 0.11)
-                else:
-                    self.driveMotors(straight_speed, straight_speed)
-                    self.update_previous_motors(straight_speed, straight_speed)
+                goingAwayWall -= 1
+            else:
+                sides_near_wall = (self.measures.irSensor[1] > 6.1, self.measures.irSensor[2] > 6.1)
+                # if goingAwayWall > 0:
+                #     print(goingAwayWall)
+                if (goingAwayWall < 1) and (sides_near_wall[0] or sides_near_wall[1]):
+                    print("PAREDE!! "+ str(self.measures.irSensor[1])+" | "+str(self.measures.irSensor[2]))
+                    if sides_near_wall[1]: # Adjust : slowly left
+                        self.driveMotors(0.08,0.15)
+                        self.update_previous_motors(0.08, 0.15)
+                    else: # Adjust : slowly right
+                        self.driveMotors(0.15,0.08)
+                        self.update_previous_motors(0.15, 0.08)
+                    goingAwayWall = 5
 
-            elif movement == 1:
-                if self.measures.compass < 89: # Adjust : slowly left
-                    self.driveMotors(0.11,0.14)
-                    self.update_previous_motors(0.11, 0.14)
-                elif self.measures.compass > 91: # Adjust : slowly right
-                    self.driveMotors(0.14,0.11)
-                    self.update_previous_motors(0.14, 0.11)
-                else:
+                elif goingAwayWall > 0:
                     self.driveMotors(straight_speed, straight_speed)
                     self.update_previous_motors(straight_speed, straight_speed)
+                    goingAwayWall -= 1
 
-            elif movement == 2:
-                if self.measures.compass < -91: # Adjust : slowly left
-                    self.driveMotors(0.11,0.14)
-                    self.update_previous_motors(0.11, 0.14)
-                elif self.measures.compass > -89: # Adjust : slowly right
-                    self.driveMotors(0.14,0.11)
-                    self.update_previous_motors(0.14, 0.11)
-                else:
-                    self.driveMotors(straight_speed, straight_speed)
-                    self.update_previous_motors(straight_speed, straight_speed)
+                elif movement == 0:
+                    if self.measures.compass < -1: # Adjust : slowly left
+                        self.driveMotors(0.11,0.14)
+                        self.update_previous_motors(0.11, 0.14)
+                    elif self.measures.compass > 1: # Adjust : slowly right
+                        self.driveMotors(0.14,0.11)
+                        self.update_previous_motors(0.14, 0.11)
+                    else:
+                        self.driveMotors(straight_speed, straight_speed)
+                        self.update_previous_motors(straight_speed, straight_speed)
+                        goingAwayWall -= 1
 
-            elif movement == 3:
-                if self.measures.compass <= 178 and self.measures.compass > 0: # Adjust : slowly left
-                    self.driveMotors(0.11,0.14)
-                    self.update_previous_motors(0.11, 0.14)
-                elif self.measures.compass >= -178 and self.measures.compass < 0: # Adjust : slowly right
-                    self.driveMotors(0.14,0.11)
-                    self.update_previous_motors(0.14, 0.11)
-                else:
-                    self.driveMotors(straight_speed, straight_speed)
-                    self.update_previous_motors(straight_speed, straight_speed)
+                elif movement == 1:
+                    if self.measures.compass < 89: # Adjust : slowly left
+                        self.driveMotors(0.11,0.14)
+                        self.update_previous_motors(0.11, 0.14)
+                    elif self.measures.compass > 91: # Adjust : slowly right
+                        self.driveMotors(0.14,0.11)
+                        self.update_previous_motors(0.14, 0.11)
+                    else:
+                        self.driveMotors(straight_speed, straight_speed)
+                        self.update_previous_motors(straight_speed, straight_speed)
+                        goingAwayWall -= 1
+
+                elif movement == 2:
+                    if self.measures.compass < -91: # Adjust : slowly left
+                        self.driveMotors(0.11,0.14)
+                        self.update_previous_motors(0.11, 0.14)
+                    elif self.measures.compass > -89: # Adjust : slowly right
+                        self.driveMotors(0.14,0.11)
+                        self.update_previous_motors(0.14, 0.11)
+                    else:
+                        self.driveMotors(straight_speed, straight_speed)
+                        self.update_previous_motors(straight_speed, straight_speed)
+                        goingAwayWall -= 1
+
+                elif movement == 3:
+                    if (self.measures.compass <= 178 and self.measures.compass > 0): # Adjust : slowly left
+                        # print("Ajustar: ESQUERDA")
+                        self.driveMotors(0.11,0.14)
+                        self.update_previous_motors(0.11, 0.14)
+                    elif (self.measures.compass >= -178 and self.measures.compass < 0): # Adjust : slowly right
+                        # print("Ajustar: DIREITA")
+                        self.driveMotors(0.14,0.11)
+                        self.update_previous_motors(0.14, 0.11)
+                    else:
+                        self.driveMotors(straight_speed, straight_speed)
+                        self.update_previous_motors(straight_speed, straight_speed)
+                        goingAwayWall -= 1
+                
+                # else:
+                #     self.driveMotors(straight_speed, straight_speed)
+                #     self.update_previous_motors(straight_speed, straight_speed)
+
+                # if (sides_near_wall[0] or sides_near_wall[1]) and goingAwayWall < 1:
+                #     print("PAREDE!!")
+                #     goingAwayWall = 2
 
             
             self.position_estimator(movement)
@@ -366,7 +418,7 @@ class MyRob(CRobLinkAngs):
             # print(est_pos[0])
             # print(est_pos[1])
 
-            self.driveMotors(-0.9*previous_power_l, -0.9*previous_power_r)
+            self.driveMotors(-0.8*previous_power_l, -0.8*previous_power_r)
             return False
 
              
@@ -450,6 +502,21 @@ class MyRob(CRobLinkAngs):
             #print("y%1: "+str(y%1))
             # return abs((y%1) - decimal_init_GPS[1]) < max_gap
             return y%1 < max_gap or y%1 > 1-max_gap
+
+
+    def distanceToDestination(self):
+        global movement
+        global decimal_init_GPS
+        global est_pos
+
+        if movement == 0:
+            return self.round_base(est_pos[0]) - est_pos[0]
+        elif movement == 1:
+            return self.round_base(est_pos[1]) - est_pos[1]
+        elif movement == 2:
+            return -(self.round_base(est_pos[1]) - est_pos[1])
+        elif movement == 3:
+            return -(self.round_base(est_pos[0]) - est_pos[0])
 
 
     
@@ -643,26 +710,30 @@ class MyRob(CRobLinkAngs):
         motor_pos_weight = 0.2
         sensor_pos_weight = 0.8
 
+        # out_dist = min(previous_power_r, previous_power_l)
+        # out_dist = (previous_power_l + previous_power_r) / 2
+        out_dist = (min(previous_power_r, previous_power_l) + ((previous_power_l + previous_power_r) / 2)) / 2
+
         if near_wall:
             if movement == 0:
                 #print(self.round_base(est_pos[0]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [motor_pos_weight * (est_pos[0] + previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
+                est_pos = [motor_pos_weight * (est_pos[0] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
                 #print("After 0 " + str(est_pos))
             elif movement == 1:
                 #print(self.round_base(est_pos[1]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[1]) + center_dif)]
+                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) + center_dif)]
                 #print("After 1 " + str(est_pos))
             elif movement == 2:
                 #print(self.round_base(est_pos[1]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[1]) - center_dif)]
+                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) - center_dif)]
                 #print("After 2 " + str(est_pos))
             elif movement == 3:
                 #print(self.round_base(est_pos[0]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [motor_pos_weight * (est_pos[0] - previous_power_l) + sensor_pos_weight * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
+                est_pos = [motor_pos_weight * (est_pos[0] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
                 #print("After 3 " + str(est_pos))
 
             # print(self.round_base(est_pos[0]))
@@ -671,13 +742,13 @@ class MyRob(CRobLinkAngs):
             
         else:
             if movement == 0:
-                est_pos = [est_pos[0] + previous_power_l, est_pos[1]]
+                est_pos = [est_pos[0] + out_dist, est_pos[1]]
             elif movement == 1:
-                est_pos = [est_pos[0], est_pos[1] + previous_power_l]
+                est_pos = [est_pos[0], est_pos[1] + out_dist]
             elif movement == 2:
-                est_pos = [est_pos[0], est_pos[1] - previous_power_l]
+                est_pos = [est_pos[0], est_pos[1] - out_dist]
             elif movement == 3:
-                est_pos = [est_pos[0] - previous_power_l, est_pos[1]]
+                est_pos = [est_pos[0] - out_dist, est_pos[1]]
 
 
     def paintMapp(self):
@@ -773,7 +844,7 @@ class MyRob(CRobLinkAngs):
         if self.measures.ground != -1 and self.measures.ground != 0 and [current_x, current_y] not in Points:
              Points[self.measures.ground-1] = [current_x, current_y]
         
-        print(Points)
+        #print(Points)
 
               
     def calcBestPath_init_P1_P2(self):
