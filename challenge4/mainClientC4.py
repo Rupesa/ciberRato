@@ -330,22 +330,23 @@ class MyRob(CRobLinkAngs):
                 self.update_previous_motors(0.04, 0.04)
                 goingAwayWall -= 1
             else:
-                sides_near_wall = (self.measures.irSensor[1] > 6.1, self.measures.irSensor[2] > 6.1)
-                # if goingAwayWall > 0:
-                #     print(goingAwayWall)
+                sides_near_wall = (self.measures.irSensor[1] > 6.3, self.measures.irSensor[2] > 6.3) # Demasiado ele deteta parede
+                if goingAwayWall > 0:
+                    print(goingAwayWall)
                 if (goingAwayWall < 1) and (sides_near_wall[0] or sides_near_wall[1]):
                     print("PAREDE!! "+ str(self.measures.irSensor[1])+" | "+str(self.measures.irSensor[2]))
                     if sides_near_wall[1]: # Adjust : slowly left
-                        self.driveMotors(0.08,0.15)
-                        self.update_previous_motors(0.08, 0.15)
+                        self.driveMotors(0.06,0.15)
+                        self.update_previous_motors(0.06, 0.15)
                     else: # Adjust : slowly right
-                        self.driveMotors(0.15,0.08)
-                        self.update_previous_motors(0.15, 0.08)
-                    goingAwayWall = 5
+                        self.driveMotors(0.15,0.06)
+                        self.update_previous_motors(0.15, 0.06)
+                    goingAwayWall = 6
 
                 elif goingAwayWall > 0:
                     self.driveMotors(straight_speed, straight_speed)
-                    self.update_previous_motors(straight_speed, straight_speed)
+                    # self.update_previous_motors(straight_speed, straight_speed)
+                    self.update_previous_motors(0.13, 0.13)
                     goingAwayWall -= 1
 
                 elif movement == 0:
@@ -684,10 +685,11 @@ class MyRob(CRobLinkAngs):
         return base * round(x/base)
 
     
-    def position_estimator(self, movement):
+    def position_estimator(self, movement): # Alterar para posição anterior + 2 (?)
         global est_pos
         global previous_power_r
         global previous_power_l
+        global current_GPS
 
         center_dif = 0
         left_dif = 0
@@ -696,6 +698,7 @@ class MyRob(CRobLinkAngs):
         near_wall = False
 
         if self.measures.irSensor[0] > 1/1.0:
+        # if self.measures.irSensor[0] > 1/1.3:
             # print("Aquiii")
             near_wall = True
             center_dif = 0.4 - 1/self.measures.irSensor[0]
@@ -718,22 +721,26 @@ class MyRob(CRobLinkAngs):
             if movement == 0:
                 #print(self.round_base(est_pos[0]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [motor_pos_weight * (est_pos[0] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
+                # est_pos = [motor_pos_weight * (est_pos[0] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
+                est_pos = [motor_pos_weight * (est_pos[0] + out_dist) + sensor_pos_weight * (self.round_base(current_GPS[0]+2) + center_dif), est_pos[1]]
                 #print("After 0 " + str(est_pos))
             elif movement == 1:
                 #print(self.round_base(est_pos[1]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) + center_dif)]
+                # est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) + center_dif)]
+                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + out_dist) + sensor_pos_weight * (self.round_base(current_GPS[1]+2) + center_dif)]
                 #print("After 1 " + str(est_pos))
             elif movement == 2:
                 #print(self.round_base(est_pos[1]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) - center_dif)]
+                # est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) - center_dif)]
+                est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - out_dist) + sensor_pos_weight * (self.round_base(current_GPS[1]-2) - center_dif)]
                 #print("After 2 " + str(est_pos))
             elif movement == 3:
                 #print(self.round_base(est_pos[0]))
                 #print("Prev: "+str(est_pos))
-                est_pos = [motor_pos_weight * (est_pos[0] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
+                # est_pos = [motor_pos_weight * (est_pos[0] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
+                est_pos = [motor_pos_weight * (est_pos[0] - out_dist) + sensor_pos_weight * (self.round_base(current_GPS[0]-2) - center_dif), est_pos[1]]
                 #print("After 3 " + str(est_pos))
 
             # print(self.round_base(est_pos[0]))
