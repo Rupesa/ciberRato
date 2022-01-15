@@ -346,7 +346,7 @@ class MyRob(CRobLinkAngs):
                 elif goingAwayWall > 0:
                     self.driveMotors(straight_speed, straight_speed)
                     # self.update_previous_motors(straight_speed, straight_speed)
-                    self.update_previous_motors(0.13, 0.13)
+                    self.update_previous_motors(0.10, 0.10)
                     goingAwayWall -= 1
 
                 elif movement == 0:
