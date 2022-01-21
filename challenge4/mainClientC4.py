@@ -39,6 +39,8 @@ goingAwayWall = 0
 previous_power_l = 0
 previous_power_r = 0
 est_pos = [0,0] # estimated position
+walls_x = None
+walls_y = None
 
 w, h = 55, 27  # weight, height of mapp
 mapp = [[0 for x in range(h)] for y in range(w)] 
@@ -326,6 +328,7 @@ class MyRob(CRobLinkAngs):
         if ((x_int < min_distance) and (y_int < min_distance)) or distToDest > 0.04:
             # if (min_distance - x_int < 0.15) or (min_distance - y_int < 0.15): # alterar para a diferença entre coordenada atual e destino
             if distToDest < 0.4 and (x_int > min_distance or y_int > min_distance):
+            # if distToDest < 0.4 and (x_int > min_distance or y_int > min_distance) and (goingToDest != 1): #or (goingToDest == 0 and path_list)):
                 self.driveMotors(0.04, 0.04)
                 self.update_previous_motors(0.04, 0.04)
                 goingAwayWall -= 1
@@ -486,9 +489,42 @@ class MyRob(CRobLinkAngs):
     
     def translateGPStoMappCoordAndPaint(self, x, y, symbol):
         global mapp
+        global walls_x
+        global walls_y
         pos_x, pos_y = self.translateGPStoMappCoord(x, y)
         if mapp[pos_x][pos_y] == 0 or mapp[pos_x][pos_y] == " ":
             mapp[pos_x][pos_y] = symbol
+        if walls_x == None or walls_y == None:
+            self.verifyOutWalls()
+
+
+    def verifyOutWalls(self):
+        global mapp
+        global walls_x
+        global walls_y
+        min_x = 99
+        max_x = -1
+        min_y = 99
+        max_y = -1
+
+        for i in range(w):
+            for j in range(h):
+                if mapp[i][j] == '|' or mapp[i][j] == '-':
+                    if i < min_x:
+                        min_x = i
+                    elif i > max_x:
+                        max_x = i
+                    
+                    if j < min_y:
+                        min_y = j
+                    elif j > max_y:
+                        max_y = j
+        
+        if max_x - min_x == 28:
+            walls_x = (max_x+scale[0], min_x+scale[0])
+        if max_y - min_y == 14:
+            walls_y = (max_y+scale[1], min_y+scale[1])
+                    
 
 
     def verifyDecimals(self, x, y):
@@ -541,7 +577,7 @@ class MyRob(CRobLinkAngs):
         # print(path_list)
 
         path_list = self.getNearestSpace2(current_x, current_y)
-        #print(path_list)
+        print(path_list)
 
         return 1
 
@@ -690,6 +726,8 @@ class MyRob(CRobLinkAngs):
         global previous_power_r
         global previous_power_l
         global current_GPS
+        global walls_x
+        global walls_y
 
         center_dif = 0
         left_dif = 0
@@ -722,24 +760,52 @@ class MyRob(CRobLinkAngs):
                 #print(self.round_base(est_pos[0]))
                 #print("Prev: "+str(est_pos))
                 # est_pos = [motor_pos_weight * (est_pos[0] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) + center_dif), est_pos[1]]
+                if walls_x:
+                    # print("")
+                    # print(walls_x[0])
+                    # print(self.round_base(current_GPS[0]+2)+1)
+                    if self.round_base(current_GPS[0]+2)+1 == walls_x[0]:
+                        # print("A\nA\nXsup"+str(walls_x[0]))
+                        center_dif = 0.5 - 1/self.measures.irSensor[0]
                 est_pos = [motor_pos_weight * (est_pos[0] + out_dist) + sensor_pos_weight * (self.round_base(current_GPS[0]+2) + center_dif), est_pos[1]]
                 #print("After 0 " + str(est_pos))
             elif movement == 1:
                 #print(self.round_base(est_pos[1]))
                 #print("Prev: "+str(est_pos))
                 # est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) + center_dif)]
+                if walls_y:
+                    # print("")
+                    # print(walls_y[0])
+                    # print(self.round_base(current_GPS[1]+2)+1)
+                    if self.round_base(current_GPS[1]+2)+1 == walls_y[0]:
+                        # print("A\nA\nYsup"+str(walls_y[0]))
+                        center_dif = 0.5 - 1/self.measures.irSensor[0]
                 est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] + out_dist) + sensor_pos_weight * (self.round_base(current_GPS[1]+2) + center_dif)]
                 #print("After 1 " + str(est_pos))
             elif movement == 2:
                 #print(self.round_base(est_pos[1]))
                 #print("Prev: "+str(est_pos))
                 # est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[1]) - center_dif)]
+                if walls_y:
+                    # print("")
+                    # print(walls_y[1])
+                    # print(self.round_base(current_GPS[1]+2)+1)
+                    if self.round_base(current_GPS[1]-2)-1 == walls_y[1]:
+                        # print("A\nA\nYinf"+str(walls_y[1]))
+                        center_dif = 0.5 - 1/self.measures.irSensor[0]
                 est_pos = [est_pos[0], motor_pos_weight * (est_pos[1] - out_dist) + sensor_pos_weight * (self.round_base(current_GPS[1]-2) - center_dif)]
                 #print("After 2 " + str(est_pos))
             elif movement == 3:
                 #print(self.round_base(est_pos[0]))
                 #print("Prev: "+str(est_pos))
                 # est_pos = [motor_pos_weight * (est_pos[0] - out_dist) + sensor_pos_weight * (self.round_base(est_pos[0]) - center_dif), est_pos[1]]
+                if walls_x:
+                    # print("")
+                    # print(walls_x[1])
+                    # print(self.round_base(current_GPS[0]+2)+1)
+                    if self.round_base(current_GPS[0]-2)-1 == walls_x[1]:
+                        # print("A\nA\nXinf"+str(walls_x[1]))
+                        center_dif = 0.5 - 1/self.measures.irSensor[0]
                 est_pos = [motor_pos_weight * (est_pos[0] - out_dist) + sensor_pos_weight * (self.round_base(current_GPS[0]-2) - center_dif), est_pos[1]]
                 #print("After 3 " + str(est_pos))
 
