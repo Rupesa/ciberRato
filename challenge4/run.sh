@@ -35,10 +35,7 @@ shift $(($OPTIND-1))
 case $challenge in
     4)
         # how to call agent for challenge 4
-        python3 mainClientC4.py -h "$host" -p "$pos" -r "$robname"
-        mv output.map $outfile.map
-        mv output.path $outfile.path
+        python3 mainClientC4.py -c "$challenge" -h "$host" -p "$pos" -r "$robname" -f "$outfile"
         ;;
         
 esac
-

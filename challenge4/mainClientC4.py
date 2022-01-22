@@ -15,6 +15,7 @@ import random
 import itertools
 #from tree_search import *
 #from ciberRato import CiberRato
+import a_star_path_finding as pf
 
 from a_star import *
 
@@ -49,8 +50,8 @@ scale= []  # scale to translate GPS to mapp coordinates
 
 Points = []
 found = 0 # best path found flag
+cicle_counter = 0
 
-outputFile = "output" # nome do output file
 
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
@@ -90,7 +91,7 @@ class MyRob(CRobLinkAngs):
         Points = [[]] * ((int)(self.nBeacons)-1)
         scale = [init_GPS[0] - 27, init_GPS[1] - 13]
         init_GPS = [(self.measures.x), (self.measures.y)]
-        
+        print(self.nBeacons)
         self.paintMapp()
         
         while True:
@@ -142,7 +143,7 @@ class MyRob(CRobLinkAngs):
         global goingToInit
         global mapp
         global est_pos
-        
+        global cicle_counter
         center_id = 0
         left_id = 1
         right_id = 2
@@ -152,6 +153,7 @@ class MyRob(CRobLinkAngs):
         current_x, current_y = self.translateGPStoMappCoord(current_GPS[0], current_GPS[1])
 
         if (current_x != 27 or current_y != 13) and found and not goingToInit:
+            print("Heyyyyyyyy")
             zeros_map = self.get_zeros_map()
             #ciberrato = CiberRato(zeros_map)
             #nextPosition = SearchProblem(ciberrato, [current_x, current_y], [27, 13])
@@ -162,11 +164,14 @@ class MyRob(CRobLinkAngs):
             goingToInit = 1
             
         elif goingToInit and current_x == 27 and current_y == 13:
+            # self.calcBestPath_init_P1_P2()
             i = 1
+            mapp_tofile = [row[:] for row in mapp]
             for point in Points:
-                mapp[point[0]][point[1]] = i
-                i= i+1
-            self.writeMapToFile()
+                if point != []:
+                    mapp_tofile[point[0]][point[1]] = i
+                    i= i+1
+            self.writeMapToFile(mapp_tofile)
             print("Finishing")
             self.finish()
             sys.exit()
@@ -179,11 +184,22 @@ class MyRob(CRobLinkAngs):
                 self.paintMapp()
                 self.checkGround()
                 ongoing = False
-                if self.pointsFull() and not found:
+                i = 1
+                cicle_counter = cicle_counter +1;
+                mapp_tofile = [row[:] for row in mapp]
+                if cicle_counter > 10:
+                    for point in Points:
+                        if point != []:
+                           mapp_tofile[point[0]][point[1]] = i
+                           i= i+1
+                    self.writeMapToFile(mapp_tofile)
+                    cicle_counter = 0
+                if self.pointsFull() and not found and self.getNearestSpace(current_x, current_y) == []:
                     done = self.calcBestPath_init_P1_P2()
-                    if done and self.getNearestSpace(current_x, current_y) == []:
+                    if done:
+                        print("Found!")
                         found = 1    
-                        self.driveMotors(0,0)
+                    self.driveMotors(0,0)
         else:
 
             if turning == 0:
@@ -621,19 +637,62 @@ class MyRob(CRobLinkAngs):
                 if mapp[i][j] == ' ':
                     lst.append([i,j])
         return lst
-        
 
+
+    def getWallsCoord(self):
+        global mapp
+        global w
+        global h
+
+        return_coord = []
+        # zeros_map = self.get_zeros_map()
+        # self.printMapp(zeros_map)
+
+        # for i in range(w):
+        #     for j in range(h):
+        #         if zeros_map[i][j] == 1:
+        #             return_coord.append((i, j))
+        #         elif zeros_map[i][j] == 0:
+        #             print("Um zero: "+str((i,j)))
+
+        for i in range(w):
+            for j in range(h):
+                if mapp[i][j] != ' ' and mapp[i][j] != 'X' and mapp[i][j] != 'I': #parede
+                    return_coord.append((i, j))
+
+        return return_coord
+
+    def get_path_to_dest(self, current, dest):
+        global w
+        global h
+        
+        walls = self.getWallsCoord()
+        # print("Return coord: "+str(walls))
+        a = pf.AStar()
+        a.init_grid(w, h, walls, (current[0], current[1]), (dest[0], dest[1]))
+        path = a.solve()
+        if path == None:
+            path = []
+
+        # print(path)
+        return path
+        
     def get_zeros_map(self):
         global mapp
         global w
         global h
 
+
         return_map = [[1 for x in range(h)] for y in range(w)] 
 
         for i in range(w):
             for j in range(h):
-                if mapp[i][j] == ' ' or mapp[i][j] == 'X'or mapp[i][j] == 'I':
+                if mapp[i][j] == ' ' or mapp[i][j] == 'X' or mapp[i][j] == 'I':
+                # if mapp[i][j] != '-' and mapp[i][j] != '|' and mapp[i][j] != 1:
                     return_map[i][j] = 0
+                elif mapp[i][j] != 0 and  mapp[i][j] != '|' and  mapp[i][j] != '-':
+                    print("ewrgwer\nwtgwter\newrgwer\nerfwe")
+                    print(mapp[i][j])
 
         return return_map
 
@@ -690,10 +749,10 @@ class MyRob(CRobLinkAngs):
         print('\n'.join([' '.join([str(cell) for cell in row]) for row in transpose_matrix]))
 
        
-    def writeMapToFile(self):
-        global mapp
-
-        zipped_rows = zip(*mapp)
+    def writeMapToFile(self, mapp_tofile):
+        #global mapp
+        global outputFile
+        zipped_rows = zip(*mapp_tofile)
         transpose_matrix = [list(row) for row in zipped_rows]
         for i in range (int(len(transpose_matrix)/2)):
             aux = transpose_matrix[len(transpose_matrix) - 1 - i]
@@ -907,7 +966,7 @@ class MyRob(CRobLinkAngs):
             self.translateGPStoMappCoordAndPaint(current_GPS[0], current_GPS[1], str(self.measures.ground))
         else:
             self.translateGPStoMappCoordAndPaint(current_GPS[0], current_GPS[1], "X")
-        #self.printMapp(mapp)
+        # self.printMapp(mapp)
         
     def checkGround(self):
         global Points
@@ -916,6 +975,12 @@ class MyRob(CRobLinkAngs):
         
         if self.measures.ground != -1 and self.measures.ground != 0 and [current_x, current_y] not in Points:
              Points[self.measures.ground-1] = [current_x, current_y]
+
+            #  if self.measures.ground == 1:
+            #     # zeros_map = self.get_zeros_map()
+            #     # self.printMapp(zeros_map)
+            #     # print(self.map_to_movements(search(zeros_map, 1, [41, 9], [49, 11]), [41, 9], [49, 11]))
+            #     print(self.path_to_movements(self.get_path_to_dest([41, 9], [49, 11])))
         
         #print(Points)
 
@@ -937,25 +1002,29 @@ class MyRob(CRobLinkAngs):
             for p in path:
                      
                 if lastP == init:
-                    n_steps = search(zeros_map, 1, lastP, p)
-                    n_steps = self.map_to_movements(n_steps, lastP, p)
+                    # n_steps = search(zeros_map, 1, lastP, p)
+                    # n_steps = self.map_to_movements(n_steps, lastP, p)
+                    n_steps = self.path_to_movements(self.get_path_to_dest(lastP, p))
                     
                     for n_s in n_steps:
                         steps.append(n_s)
                     if steps == []:
                         return 0
                 else:
-                    new_steps = search(zeros_map, 1, lastP, p)
-                    new_steps = self.map_to_movements(new_steps, lastP, p)
-                    
+                    # new_steps = search(zeros_map, 1, lastP, p)
+                    # new_steps = self.map_to_movements(new_steps, lastP, p)
+                    new_steps = self.path_to_movements(self.get_path_to_dest(lastP, p))
+
+                    # if new_steps == None or new_steps == []:
                     if new_steps == []:
                         return 0
                     else:
                         for n_s in new_steps:
                             steps.append(n_s)
                 lastP = p
-            new_steps = search(zeros_map, 1, lastP, init)
-            new_steps = self.map_to_movements(new_steps, lastP, init)
+            # new_steps = search(zeros_map, 1, lastP, init)
+            # new_steps = self.map_to_movements(new_steps, lastP, init)
+            new_steps = self.path_to_movements(self.get_path_to_dest(lastP, init))
             if new_steps == []:
                 return 0
             for n_s in new_steps:
@@ -995,7 +1064,7 @@ class MyRob(CRobLinkAngs):
         
     def writeBestPathToFile(self, bestpath):
         global Points
-        
+        global outputFile
         i = 0
         c = 0
         steps = self.movements_to_steps(bestpath)
@@ -1067,7 +1136,8 @@ rob_name = "Rodrigo-Rui-C2"
 host = "localhost"
 pos = 1
 mapc = None
-
+outputFile = "output" # nome do output file
+challenge = 4
 
 for i in range(1, len(sys.argv),2):
     if (sys.argv[i] == "--host" or sys.argv[i] == "-h") and i != len(sys.argv) - 1:
@@ -1079,10 +1149,14 @@ for i in range(1, len(sys.argv),2):
     elif (sys.argv[i] == "--map" or sys.argv[i] == "-m") and i != len(sys.argv) - 1:
         mapc = Map(sys.argv[i + 1])
     elif (sys.argv[i] == "--outputfile" or sys.argv[i] == "-f") and i != len(sys.argv) - 1:
-        outputFile = sys.argv[i + 1]
+        outputFile = str(sys.argv[i + 1])
+    elif (sys.argv[i] == "--challenge" or sys.argv[i] == "-c") and i != len(sys.argv) - 1:
+        challenge = str(sys.argv[i + 1])
     else:
         print("Unkown argument", sys.argv[i])
         quit()
+
+print(outputFile)
 
 if __name__ == '__main__':
     rob=MyRob(rob_name,pos,[0.0,90.0,-90.0,180.0],host)
